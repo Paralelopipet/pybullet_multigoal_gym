@@ -135,7 +135,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         # load urdf if it's the first time that reset() gets called
         if not self.robot_urdf_loaded:
                         # load box as base
-            plane_id = self._p.loadURDF(self.plane_urdf, useFixedBase=self.fixed_base, globalScaling=1.0)
+            plane_id = self._p.loadURDF(self.plane_urdf, useFixedBase=self.fixed_base, globalScaling=1.0, basePosition=[0,0,-1])
             self.robot_urdf_loaded = True
             
             self.robot_id = self._p.loadURDF(self.model_urdf,
