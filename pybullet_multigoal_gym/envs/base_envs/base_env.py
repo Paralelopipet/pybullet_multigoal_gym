@@ -5,16 +5,19 @@ import warnings
 from gym.utils import seeding
 from gym import spaces
 from pybullet_utils import bullet_client
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from pybullet_multigoal_gym.robots.kuka_with_box import KukaBox
 
 class BaseBulletMGEnv(gym.Env):
     """
     Base class for non-hierarchical multi-goal RL task, based on PyBullet and Gym.
     """
 
-    def __init__(self, robot, chest=False,
+    def __init__(self, robot: "KukaBox", chest=False,
                  render=False, image_observation=False, goal_image=False, camera_setup=None,
-                 seed=0, gravity=9.81, timestep=0.002, frame_skip=20):
+                 seed=0, gravity=[0,0,-9.81], timestep=0.002, frame_skip=20):
         self.robot = robot
 
         self.isRender = render
@@ -216,7 +219,7 @@ class BaseBulletMGEnv(gym.Env):
                 # workaround to make types work
                 self.__setattr__("_p", bullet_client.BulletClient())
             self.physicsClientId = self._p._client
-            self._p.setGravity(0, 0, -self._gravity)
+            self._p.setGravity(self._gravity[0], self._gravity[1], self._gravity[2])
             self._p.setDefaultContactERP(0.9)
             self._p.setPhysicsEngineParameter(fixedTimeStep=self._timestep * self._frame_skip,
                                               numSolverIterations=self._num_solver_iterations,
