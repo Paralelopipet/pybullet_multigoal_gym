@@ -1,8 +1,10 @@
-from pybullet_multigoal_gym.robots.robot_bases import URDFBasedRobot, MultiURDFBasedRobot
-from gym import spaces
 import numpy as np
-from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
 import quaternion as quat
+from gym import spaces
+
+from pybullet_multigoal_gym.robots.robot_bases import (MultiURDFBasedRobot)
+from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
+
 
 class KukaBox(MultiURDFBasedRobot):
     def __init__(self, bullet_client=None, gripper_type='parallel_jaw',
@@ -18,7 +20,8 @@ class KukaBox(MultiURDFBasedRobot):
                                 robot_name='iiwa14',
                                 self_collision=False,
                                 fixed_base=False)
-        self.kuka_body_index = None
+        self.kuka_body_index: int = None
+        self.body_joint_index: int = None
         self.kuka_joint_index = None
         # initial robot joint states
         self.kuka_rest_pose = [0, -0.5592432, 0, 1.733180, 0, -0.8501557, 0]
@@ -26,6 +29,7 @@ class KukaBox(MultiURDFBasedRobot):
         self.joint_state_target = None
         self.end_effector_force_sensor = end_effector_force_sensor
         self.end_effector_force_sensor_enabled = False
+        self.base_force_sensor_enabled = False 
         self.end_effector_tip_joint_index = None
         self.end_effector_target = None
         self.end_effector_target_rot = None
@@ -117,6 +121,7 @@ class KukaBox(MultiURDFBasedRobot):
     def robot_specific_reset(self):
         if self.kuka_body_index is None:
             self.kuka_body_index = self.jdict['cube_iiwa_joint'].bodies[self.jdict['cube_iiwa_joint'].bodyIndex]
+            self.body_joint_index = self.jdict['cube_iiwa_joint'].jointIndex
         if self.kuka_joint_index is None:
             # The 0-th joint is the one that connects the world frame and the kuka base, so skip it
             self.kuka_joint_index = [
@@ -150,7 +155,11 @@ class KukaBox(MultiURDFBasedRobot):
                                                  jointIndex=self.jdict['iiwa_joint_7'].jointIndex,
                                                  enableSensor=self.end_effector_force_sensor)
             self.end_effector_force_sensor_enabled = True
-
+        if not self.base_force_sensor_enabled:
+            self._p.enableJointForceTorqueSensor(bodyUniqueId=self.kuka_body_index,
+                                                 jointIndex=self.body_joint_index,
+                                                 enableSensor=True)
+            self.base_force_sensor_enabled = True
         # reset arm poses
         self.set_kuka_joint_state(self.kuka_rest_pose)
         self.kuka_rest_pose = self.compute_ik(self.end_effector_tip_initial_position)

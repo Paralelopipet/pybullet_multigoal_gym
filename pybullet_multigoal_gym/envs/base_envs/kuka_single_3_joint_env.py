@@ -1,11 +1,14 @@
 import os
+from typing import List
+
 import numpy as np
+
 from pybullet_multigoal_gym.envs.base_envs.base_env import BaseBulletMGEnv
 from pybullet_multigoal_gym.robots.kuka_with_box import KukaBox
 from pybullet_multigoal_gym.utils.assets_dir import CUBE_LINK_NAME
-
-from seer.stability_metrics.adapter.stability_metric_adapter import StabilityMetricAdapter
-from seer.stability_metrics.adapter.types import RobotConfig
+from seer.stability_metrics.adapter.stability_metric_adapter import \
+    StabilityMetricAdapter
+from seer.stability_metrics.adapter.types import RobotConfig, RobotState
 
 
 class KukaBullet3Env(BaseBulletMGEnv):
@@ -62,13 +65,13 @@ class KukaBullet3Env(BaseBulletMGEnv):
                      end_effector_start_on_table=end_effector_start_on_table,
                      obj_range=self.obj_range, target_range=self.target_range)
 
+        self._force_angle_calculator = StabilityMetricAdapter.instance(
+            RobotConfig(cube_link_name=CUBE_LINK_NAME, urdf_path=robot.model_urdf)
+        )
         BaseBulletMGEnv.__init__(self, robot=robot, render=render,
                                  image_observation=image_observation, goal_image=goal_image,
                                  camera_setup=camera_setup,
                                  seed=0, timestep=0.002, frame_skip=20)
-        self._force_angle = StabilityMetricAdapter.instance(
-            RobotConfig(cube_link_name=CUBE_LINK_NAME, urdf_path=robot.model_urdf)
-        )
 
     def _task_reset(self, test=False):
         if not self.objects_urdf_loaded:
@@ -159,14 +162,15 @@ class KukaBullet3Env(BaseBulletMGEnv):
             state = np.concatenate((joint_poses, state))
             policy_state = np.concatenate((joint_poses, policy_state))
 
-        force_angle = self.force_angle()
+        centre_of_mass = self.getCenterOfMass()
+        force_angle = self._force_angle(centre_of_mass)
 
         obs_dict = {'observation': state.copy(),
                     'policy_state': policy_state.copy(),
                     'achieved_goal': achieved_goal.copy(),
                     'desired_goal': self.desired_goal.copy(),
                     'desired_joint_goal': self.desired_joint_goal.copy(),
-                    'COM': self.getCenterOfMass(),
+                    'COM': centre_of_mass,
                     "force_angle": force_angle,
                     'tipped_over': self._tipped_over(force_angle)
                     }
@@ -202,16 +206,26 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._p.resetBasePositionAndOrientation(body_id, position, orientation)
 
 
-    def force_angle(self):
-        return 1
-        # TODO return self._force_angle.get()
+    def _force_angle(self, centre_of_mass: List[float]):
+        # note that all values in the robot state need to be relative to the cube origin!
+        # i.e., rotate and translate the forces and moments and centre of mass by the current orientation/position of the cube origin
+        fx, fy, fz, mx, my, mz = self._p.getJointState(self.robot.robot_id, self.robot.body_joint_index)[2]
+        # TODO mgraf find out in which coordinate system the above is
+        # TODO mgraf find out which forces the above does not include
+        # TODO mgraf test if the coordinates are in the right order etc.
+        # Perhaps a first debugging step is disabling the motion and seing what happens
+        return self._force_angle_calculator.get(RobotState(
+            centre_of_mass=np.array(centre_of_mass),
+            net_force=np.array([fx,fy,fz]),
+            net_moment=np.array([mx,my,mz])
+        ))
 
     def _tipped_over(self, force_angle: float):
         return force_angle < 0
 
-    def getCenterOfMass(self):
+    def getCenterOfMass(self) -> List[float]:
         # Calculate the center of mass of the robot_id
-        com_position = [0, 0, 0]
+        com_position: List[float] = [0, 0, 0]
         joint_poses, joint_vels = self.robot.get_kuka_joint_state()
         for link_idx in range(len(joint_poses)):
             link_mass = list(self._p.getDynamicsInfo(self.robot.robot_id, link_idx))[0]

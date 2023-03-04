@@ -1,9 +1,12 @@
-import pybullet_multigoal_gym as pmg
 import matplotlib.pyplot as plt
+
+import pybullet_multigoal_gym as pmg
+from pybullet_multigoal_gym.envs.task_envs.kuka_single_step_envs import \
+    KukaTipOverEnv
 
 f, axarr = plt.subplots(1, 2)
 
-env = pmg.make_env(task='tip_over',
+env: KukaTipOverEnv = pmg.make_env(task='tip_over',
                    gripper='parallel_jaw_cube',
                    render=True,
                    binary_reward=True,
