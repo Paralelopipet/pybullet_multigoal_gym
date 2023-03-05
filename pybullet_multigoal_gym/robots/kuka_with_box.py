@@ -11,7 +11,7 @@ class KukaBox(MultiURDFBasedRobot):
                  joint_control=False, grasping=False, end_effector_rotation_control=False, end_effector_force_sensor=False,
                  primitive=None, workspace_range=None, resolution=0.002,
                  end_effector_start_on_table=False, table_surface_z=0.175,
-                 obj_range=0.15, target_range=0.15):
+                 obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.]):
         self.gripper_type = gripper_type
         MultiURDFBasedRobot.__init__(self,
                                 bullet_client=bullet_client,
@@ -19,7 +19,8 @@ class KukaBox(MultiURDFBasedRobot):
                                 plane_urdf=str(ASSETS_DIR / "objects" / "assembling_shape" / "plane.urdf"),
                                 robot_name='iiwa14',
                                 self_collision=False,
-                                fixed_base=False)
+                                fixed_base=False,
+                                plane_position=plane_position)
         self.kuka_body_index: int = None
         self.body_joint_index: int = None
         self.kuka_joint_index = None

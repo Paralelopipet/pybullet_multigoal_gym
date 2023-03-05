@@ -19,7 +19,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
     def __init__(self, render=True, binary_reward=True,
                  image_observation=False, goal_image=False, depth_image=False, visualize_target=True,
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
-                 gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15,
+                 gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.],
                  target_in_the_air=True, end_effector_start_on_table=False,
                  distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=100):
         if observation_cam_id is None:
@@ -42,6 +42,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.has_obj = has_obj
         self.obj_range = obj_range
         self.target_range = target_range
+        self.plane_position = plane_position
 
         self.object_assets_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "objects")
         self.objects_urdf_loaded = False
@@ -63,7 +64,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                      joint_control=joint_control,
                      gripper_type=gripper_type,
                      end_effector_start_on_table=end_effector_start_on_table,
-                     obj_range=self.obj_range, target_range=self.target_range)
+                     obj_range=self.obj_range, target_range=self.target_range, plane_position=self.plane_position)
 
         self._force_angle_calculator = StabilityMetricAdapter.instance(
             RobotConfig(cube_link_name=CUBE_LINK_NAME, urdf_path=robot.model_urdf)

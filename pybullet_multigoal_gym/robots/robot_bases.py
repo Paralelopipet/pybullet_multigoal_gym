@@ -102,7 +102,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
     """Base class for URDF .xml based robots."""
 
     def __init__(self, bullet_client, model_urdf: str, plane_urdf: str, robot_name, base_position=None,
-                 base_orientation=None, fixed_base=False, self_collision=False):
+                 base_orientation=None, plane_position=[0., 0., -1.],fixed_base=False, self_collision=False):
         XmlBasedRobot.__init__(self,
                                bullet_client=bullet_client,
                                robot_name=robot_name,
@@ -115,6 +115,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         self.plane_urdf = plane_urdf
         self.base_position = base_position
         self.base_orientation = base_orientation
+        self.plane_position = plane_position
         self.fixed_base = fixed_base
         self.robot_urdf_loaded = False
         self.target_keys = ['target_red', 'target_blue', 'target_green', 'target_purple']
@@ -135,7 +136,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         # load urdf if it's the first time that reset() gets called
         if not self.robot_urdf_loaded:
                         # load box as base
-            plane_id = self._p.loadURDF(self.plane_urdf, useFixedBase=self.fixed_base, globalScaling=1.0, basePosition=[0,0,-1])
+            plane_id = self._p.loadURDF(self.plane_urdf, useFixedBase=self.fixed_base, globalScaling=1.0, basePosition=self.plane_position)
             self.robot_urdf_loaded = True
             
             self.robot_id = self._p.loadURDF(self.model_urdf,

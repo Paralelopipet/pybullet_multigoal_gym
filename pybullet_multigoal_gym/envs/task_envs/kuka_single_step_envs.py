@@ -49,7 +49,7 @@ class KukaReachEnv(KukaBulletMGEnv):
 class KukaTipOverEnv(KukaBullet3Env):
     def __init__(self, render=True, binary_reward=True, joint_control=True, distance_threshold=0.05,
                  image_observation=False, goal_image=False, depth_image=False, visualize_target=True,
-                 camera_setup=None, observation_cam_id=0, goal_cam_id=0, target_range=0.15,
+                 camera_setup=None, observation_cam_id=0, goal_cam_id=0, target_range=0.15, plane_position=[0., 0., -1.],
                  gripper_type='parallel_jaw'):
         KukaBullet3Env.__init__(self, render=render, binary_reward=binary_reward, distance_threshold=distance_threshold,
                                  image_observation=image_observation, goal_image=goal_image, depth_image=depth_image,
@@ -57,7 +57,7 @@ class KukaTipOverEnv(KukaBullet3Env):
                                  camera_setup=camera_setup, observation_cam_id=observation_cam_id,
                                  goal_cam_id=goal_cam_id,
                                  gripper_type=gripper_type, obj_range=0.15, target_range=target_range,
-                                 target_in_the_air=True,
+                                 plane_position=plane_position, target_in_the_air=True,
                                  grasping=False, joint_control=joint_control, has_obj=False)
 
 

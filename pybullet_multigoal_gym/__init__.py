@@ -7,7 +7,7 @@ def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, bi
              primitive=None,
              image_observation=False, depth_image=False, goal_image=False, point_cloud=False, state_noise=False,
              visualize_target=True,
-             camera_setup=None, observation_cam_id=None, goal_cam_id=0, target_range=0.15,
+             camera_setup=None, observation_cam_id=None, goal_cam_id=0, target_range=0.15, plane_position=[0.,0.,-1.],
              use_curriculum=False, num_goals_to_generate=1e6):
     if observation_cam_id is None:
         observation_cam_id = [0]
@@ -106,6 +106,8 @@ def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, bi
                     'observation_cam_id': observation_cam_id,
                     'goal_cam_id': goal_cam_id,
                     'gripper_type': gripper,
+                    'target_range': target_range,
+                    'plane_position': plane_position,
                 },
                 max_episode_steps=max_episode_steps,
             )
