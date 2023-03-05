@@ -1,3 +1,4 @@
+# Be careful using this on Macs with M1, there are problems with installing numpy etc, e.g. https://adrianeboyd.github.io/installing-numpy-spacy-apple-m1/
 setuptools~=50.3.0
 pybullet~=3.0.6
 gym~=0.17.3
