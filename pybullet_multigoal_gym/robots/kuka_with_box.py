@@ -161,6 +161,10 @@ class KukaBox(MultiURDFBasedRobot):
                                                  jointIndex=self.body_joint_index,
                                                  enableSensor=True)
             self.base_force_sensor_enabled = True
+
+        # move position to the initial configuration
+        self._p.resetBasePositionAndOrientation(self.robot_id, [0.0, 0.0, 0.1], [0, 0, 0, 1]) 
+
         # reset arm poses
         self.set_kuka_joint_state(self.kuka_rest_pose)
         self.kuka_rest_pose = self.compute_ik(self.end_effector_tip_initial_position)
