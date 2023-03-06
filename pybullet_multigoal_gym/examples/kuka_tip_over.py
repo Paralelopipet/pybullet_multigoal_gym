@@ -31,6 +31,6 @@ while True:
     obs, reward, done, info = env.step(action)
     # axarr[0].imshow(obs['desired_goal_img'])
     # axarr[1].imshow(obs['achieved_goal_img'])
-    plt.pause(0.0001)
+    # plt.pause(0.0001)
     if done:
         env.reset()

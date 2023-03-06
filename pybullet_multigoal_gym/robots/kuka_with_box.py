@@ -11,7 +11,7 @@ class KukaBox(MultiURDFBasedRobot):
                  joint_control=False, grasping=False, end_effector_rotation_control=False, end_effector_force_sensor=False,
                  primitive=None, workspace_range=None, resolution=0.002,
                  end_effector_start_on_table=False, table_surface_z=0.175,
-                 obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.]):
+                 obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring = False):
         self.gripper_type = gripper_type
         MultiURDFBasedRobot.__init__(self,
                                 bullet_client=bullet_client,
@@ -20,7 +20,8 @@ class KukaBox(MultiURDFBasedRobot):
                                 robot_name='iiwa14',
                                 self_collision=False,
                                 fixed_base=False,
-                                plane_position=plane_position)
+                                plane_position=plane_position,
+                                has_spring = has_spring)
         self.kuka_body_index: int = None
         self.body_joint_index: int = None
         self.kuka_joint_index = None
@@ -163,7 +164,11 @@ class KukaBox(MultiURDFBasedRobot):
             self.base_force_sensor_enabled = True
 
         # move position to the initial configuration
-        self._p.resetBasePositionAndOrientation(self.robot_id, [0.0, 0.0, 0.1], [0, 0, 0, 1]) 
+        self._p.resetBasePositionAndOrientation(self.robot_id, [0.0, 0.0, 0.0], [0, 0, 0, 1]) 
+        if self.has_spring:
+            box_position = self.plane_position
+            # box_position[2] -= 0.05
+            self._p.resetBasePositionAndOrientation(self.box,  box_position, [0, 0, 0, 1]) 
 
         # reset arm poses
         self.set_kuka_joint_state(self.kuka_rest_pose)
@@ -290,7 +295,7 @@ class KukaBox(MultiURDFBasedRobot):
             # jointRanges=[5.8, 4, 5.8, 4, 5.8, 4, 6],
             restPoses=self.kuka_rest_pose,
             maxNumIterations=40,
-            residualThreshold=0.00001)
+            residualThreshold=0.00001)  # type: ignore
         return joint_poses[:7]
 
     def move_arm(self, joint_poses):
@@ -301,7 +306,7 @@ class KukaBox(MultiURDFBasedRobot):
                                           targetVelocities=np.zeros((7,)),
                                           forces=np.ones((7,)) * 200,
                                           positionGains=np.ones((7,)) * 0.03,
-                                          velocityGains=np.ones((7,)))
+                                          velocityGains=np.ones((7,)))  # type: ignore
 
     def move_finger(self, grip_ctrl):
         target_joint_poses = self.gripper_mmic_joint_multiplier * grip_ctrl
@@ -312,7 +317,7 @@ class KukaBox(MultiURDFBasedRobot):
                                           targetVelocities=np.zeros((self.gripper_num_joint,)),
                                           forces=np.ones((self.gripper_num_joint,)) * 50,
                                           positionGains=np.ones((self.gripper_num_joint,)) * 0.03,
-                                          velocityGains=np.ones((self.gripper_num_joint,)))
+                                          velocityGains=np.ones((self.gripper_num_joint,))) # type: ignore
 
     def execute_primitive(self, ee_waypoints):
         # execute primitive

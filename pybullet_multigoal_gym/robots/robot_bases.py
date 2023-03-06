@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import pybullet
-
+from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
 
 class XmlBasedRobot(object):
     """Base class for .xml based agents."""
@@ -102,7 +102,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
     """Base class for URDF .xml based robots."""
 
     def __init__(self, bullet_client, model_urdf: str, plane_urdf: str, robot_name, base_position=None,
-                 base_orientation=None, plane_position=[0., 0., -1.],fixed_base=False, self_collision=False):
+                 base_orientation=None, plane_position=[0., 0., -1.], has_spring = False, fixed_base=False, self_collision=False):
         XmlBasedRobot.__init__(self,
                                bullet_client=bullet_client,
                                robot_name=robot_name,
@@ -117,6 +117,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         self.base_orientation = base_orientation
         self.plane_position = plane_position
         self.fixed_base = fixed_base
+        self.has_spring = has_spring
         self.robot_urdf_loaded = False
         self.target_keys = ['target_red', 'target_blue', 'target_green', 'target_purple']
         self.target_bodies = {
@@ -131,6 +132,9 @@ class MultiURDFBasedRobot(XmlBasedRobot):
             'target_green': [-0.54, 0.0, 0.035, 0.0, 0.0, 0.0, 1.0],
             'target_purple': [-0.54, 0.0, 0.035, 0.0, 0.0, 0.0, 1.0]
         }
+
+        if has_spring:
+            self.plane_position[2] += -0.32
 
     def reset(self):
         # load urdf if it's the first time that reset() gets called
@@ -147,11 +151,23 @@ class MultiURDFBasedRobot(XmlBasedRobot):
             # set joint positions
             ob = self.robot_id
             jointPositions = [3.559609, 0.411182, 0.862129, 1.744441, 0.077299, -1.129685, 0.006001]
-            # for jointIndex in range(self._p.getNumJoints(ob)): TODO WHY DOESNT WORK, WHY 17 JOINTS
             for jointIndex in range(len(jointPositions)):
                 self._p.resetJointState(ob, jointIndex, jointPositions[jointIndex])
             self.addToScene(plane_id)
             self.addToScene(self.robot_id)
+
+            if self.has_spring:
+                # add constraints
+                rest_length = 0.3
+                box_urdf = str(ASSETS_DIR / "objects" / "assembling_shape" / "sphere.urdf")
+                box_position = self.plane_position 
+                box_position[2] += 0.0
+                box = self._p.loadURDF(box_urdf, useFixedBase=True, globalScaling=0.5, basePosition=self.plane_position)
+                self.addToScene(box)
+                self.box = box
+                c_spring = self._p.createConstraint(box, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, 0], [0, 0, rest_length], [0, 0, 0], [0,0,0,1], [0,0,0,1])
+                self._p.changeConstraint(c_spring, maxForce=40)
+                self._p.addUserDebugLine([0,0,0.1], [0,0,-0.1], [1, 0, 0], 1, 100)
             # for target_name in self.target_keys:
             #     self.target_bodies[target_name] = self._p.loadURDF(
             #         os.path.join(os.path.dirname(__file__), "..", "assets", "robots", target_name + ".urdf"),
