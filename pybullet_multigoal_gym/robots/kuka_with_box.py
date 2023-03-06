@@ -106,7 +106,7 @@ class KukaBox(MultiURDFBasedRobot):
             if self.grasping:
                 self.action_space = spaces.Box(-np.ones([8]), np.ones([8]))
             else:
-                self.action_space = spaces.Box(-np.ones([7]), np.ones([7]))
+                self.action_space = spaces.Box(-np.ones([7]), np.ones([7])) # TODO Modify range when changing from POSITION_CONTROL
         else:
             if self.grasping:
                 if self.end_effector_rotation_control:
