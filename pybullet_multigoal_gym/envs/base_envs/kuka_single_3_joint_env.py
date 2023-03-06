@@ -21,7 +21,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
                  gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,
                  target_in_the_air=True, end_effector_start_on_table=False,
-                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=100):
+                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, force_angle_reward_factor=1.0):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -56,6 +56,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         }
 
         self.tip_penalty = tip_penalty
+        self.force_angle_reward_factor = force_angle_reward_factor
 
         self.desired_goal = None
         self.desired_goal_image = None
@@ -132,7 +133,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
             self.set_object_pose(self.object_bodies['target'],
                                  self.desired_goal,
                                  self.object_initial_pos['target'][3:])
-        self.desired_joint_goal = np.array(self.robot.compute_ik(self.desired_goal))
+        # self.desired_joint_goal = np.array(self.robot.compute_ik(self.desired_goal))
 
 
     def _step_callback(self):
@@ -164,16 +165,15 @@ class KukaBullet3Env(BaseBulletMGEnv):
             policy_state = np.concatenate((joint_poses, policy_state))
 
         centre_of_mass = self.getCenterOfMass()
-        force_angle = self._force_angle(centre_of_mass)
+
+        # Final state: joints (7), gripper_xyz (3), COM (3)
+        state = np.concatenate((state, centre_of_mass))
 
         obs_dict = {'observation': state.copy(),
                     'policy_state': policy_state.copy(),
                     'achieved_goal': achieved_goal.copy(),
                     'desired_goal': self.desired_goal.copy(),
-                    'desired_joint_goal': self.desired_joint_goal.copy(),
-                    'COM': centre_of_mass,
-                    "force_angle": force_angle,
-                    'tipped_over': self._tipped_over(force_angle)
+                    # 'desired_joint_goal': self.desired_joint_goal.copy(),
                     }
         if self.image_observation:
             images = []
@@ -190,16 +190,40 @@ class KukaBullet3Env(BaseBulletMGEnv):
                 })
         return obs_dict
 
-    def _compute_reward(self, achieved_goal, desired_goal, tipped_over):
+    def _compute_reward(self, achieved_goal, desired_goal, observation):
         assert achieved_goal.shape == desired_goal.shape
+        reward = 0
         d = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
         not_achieved = (d > self.distance_threshold)
-        if tipped_over:
-            d += self.tip_penalty
         if self.binary_reward:
             return -not_achieved.astype(np.float32), ~not_achieved
+        
+
+        achieved_reward = 100.0 # TODO Move to param
+        distance_factor = 10.0 # TODO Move to param
+        if not not_achieved:
+            reward += achieved_reward
+        reward += -d * distance_factor
+        joints = observation[0:6]
+        gripper_xyz = observation[6:9]
+        com = observation[9:12]
+        force_angle = self._force_angle(com)
+        is_tipped = self._tipped_over(force_angle)
+
+        # Add penalty for bad force angle
+        if force_angle == np.inf:
+            reward += self.force_angle_reward_factor * 1 # max reward for good stability
+        elif force_angle == -np.inf:
+            reward += self.tip_penalty
         else:
-            return -d, ~not_achieved
+            if force_angle > 0:
+                # reward += self.force_angle_penalty_factor * -1 / (100 * force_angle) + 0.5
+                reward += self.force_angle_reward_factor * 1/(1 + np.exp(-force_angle)) - 0.5
+            else:
+                reward += self.tip_penalty
+        # if is_tipped:
+        #     reward += self.tip_penalty
+        return reward, ~not_achieved
 
     def set_object_pose(self, body_id, position, orientation=None):
         if orientation is None:
@@ -207,7 +231,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._p.resetBasePositionAndOrientation(body_id, position, orientation)
 
 
-    def _force_angle(self, centre_of_mass: List[float]):
+    def _force_angle(self, centre_of_mass: List[float]) -> float:
         # note that all values in the robot state need to be relative to the cube origin!
         # i.e., rotate and translate the forces and moments and centre of mass by the current orientation/position of the cube origin
         fx, fy, fz, mx, my, mz = self._p.getJointState(self.robot.robot_id, self.robot.body_joint_index)[2]
@@ -221,7 +245,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
             net_moment=np.array([mx,my,mz])
         ))
 
-    def _tipped_over(self, force_angle: float):
+    def _tipped_over(self, force_angle: float) -> bool:
         return force_angle < 0
 
     def getCenterOfMass(self) -> List[float]:
