@@ -135,7 +135,7 @@ class BaseBulletMGEnv(gym.Env):
     def step(self, action):
         self.robot.apply_action(action)
         obs = self._get_obs()
-        reward, goal_achieved  = self._compute_reward(obs['achieved_goal'], obs['desired_goal'], obs['tipped_over'])
+        reward, goal_achieved = self._compute_reward(obs['achieved_goal'], obs['desired_goal'], obs['observation'])
         self._step_callback()
         info = {
             'goal_achieved': goal_achieved
@@ -273,6 +273,6 @@ class BaseBulletMGEnv(gym.Env):
         #   e.g., goal generations
         raise NotImplementedError
 
-    def _compute_reward(self, achieved_goal, desired_goal):
+    def _compute_reward(self, achieved_goal, desired_goal, observations=None):
         # method to override, purposed to compute goal-conditioned task-specific reward
         raise NotImplementedError
