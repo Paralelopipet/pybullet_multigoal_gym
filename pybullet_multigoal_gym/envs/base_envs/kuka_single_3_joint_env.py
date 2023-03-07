@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 from numpy.typing import NDArray
+from pybullet_multigoal_gym.utils.get_centre_of_mass import get_centre_of_mass
 from scipy.spatial.transform import Rotation
 
 from pybullet_multigoal_gym.envs.base_envs.base_env import BaseBulletMGEnv
@@ -233,12 +234,12 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._p.resetBasePositionAndOrientation(body_id, position, orientation)
 
 
-    def _force_angle(self, centre_of_mass: List[float]) -> float:
+    def _force_angle(self, centre_of_mass: NDArray) -> float:
         # note that all values in the robot state need to be relative to the cube origin!
         # i.e., rotate and translate the forces and moments and centre of mass by the current orientation/position of the cube origin
         fx, fy, fz, mx, my, mz = self._p.getJointState(self.robot.robot_id, self.robot.body_joint_index)[2]
         return self._force_angle_calculator.get(RobotState(
-            centre_of_mass=np.array(centre_of_mass),
+            centre_of_mass=centre_of_mass,
             net_force=np.array([fx,fy,fz]),
             net_moment=np.array([mx,my,mz])
         ))
@@ -247,16 +248,4 @@ class KukaBullet3Env(BaseBulletMGEnv):
         return force_angle < 0
 
     def _get_centre_of_mass(self) -> NDArray:
-        # Calculate the center of mass of the robot_id
-        global_center_of_mass = np.array([0, 0, 0], dtype=np.float32)
-        for link_idx in range(self._p.getNumJoints(self.robot.robot_id)):
-            link_mass = self._p.getDynamicsInfo(self.robot.robot_id, link_idx)[0]
-            link_center_of_mass = np.array(self._p.getLinkState(self.robot.robot_id, link_idx)[0])
-            global_center_of_mass += (link_mass / self.robot.total_mass) * link_center_of_mass
-        return self._transform_to_base_coordinate_system(global_center_of_mass)
-
-    def _transform_to_base_coordinate_system(self, global_center_of_mass: NDArray) -> NDArray:
-        position, orientation = self._p.getBasePositionAndOrientation(self.robot.robot_id)
-        return Rotation.from_quat(orientation).apply(
-            global_center_of_mass - np.array(position, dtype=np.float32)
-        )
+        return get_centre_of_mass(self._p, self.robot.robot_id, self.robot.total_mass)

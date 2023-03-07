@@ -1,7 +1,11 @@
-import numpy as np
 import os
+
+import numpy as np
 import pybullet
+
 from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
+from pybullet_multigoal_gym.utils.get_total_mass import get_total_mass
+
 
 class XmlBasedRobot(object):
     """Base class for .xml based agents."""
@@ -178,11 +182,8 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         self.robot_specific_reset()
 
     def calculateTotalMass(self):
-        total_mass = 0
-        for link_idx in range(self._p.getNumJoints(self.robot_id)):
-            link_mass = self._p.getDynamicsInfo(self.robot_id, link_idx)[0]
-            total_mass += link_mass
-        return total_mass
+        return get_total_mass(self._p, self.robot_id)
+
     def robot_specific_reset(self):
         # method to override, purposed to reset robot-specific configuration
         raise NotImplementedError
