@@ -167,7 +167,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
             state = np.concatenate((joint_poses, state))
             policy_state = np.concatenate((joint_poses, policy_state))
 
-        centre_of_mass = self._get_centre_of_mass()
+        centre_of_mass = self.get_centre_of_mass()
 
         # Final state: joints (7), gripper_xyz (3), COM (3)
         state = np.concatenate((state, centre_of_mass))
@@ -210,7 +210,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         joints = observation[:7]
         gripper_xyz = observation[7:10]
         com = observation[10:]
-        force_angle = self._force_angle(com)
+        force_angle = self.force_angle(com)
         is_tipped = self._tipped_over(force_angle)
 
         # Add penalty for bad force angle
@@ -234,7 +234,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._p.resetBasePositionAndOrientation(body_id, position, orientation)
 
 
-    def _force_angle(self, centre_of_mass: NDArray) -> float:
+    def force_angle(self, centre_of_mass: NDArray) -> float:
         # note that all values in the robot state need to be relative to the cube origin!
         # i.e., rotate and translate the forces and moments and centre of mass by the current orientation/position of the cube origin
         fx, fy, fz, mx, my, mz = self._p.getJointState(self.robot.robot_id, self.robot.body_joint_index)[2]
@@ -247,5 +247,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
     def _tipped_over(self, force_angle: float) -> bool:
         return force_angle < 0
 
-    def _get_centre_of_mass(self) -> NDArray:
+    def get_centre_of_mass(self) -> NDArray:
         return get_centre_of_mass(self._p, self.robot.robot_id, self.robot.total_mass)
+
+    def get_p(self):
+        return self._p
