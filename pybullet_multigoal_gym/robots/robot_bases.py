@@ -138,7 +138,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         }
 
         if has_spring:
-            self.plane_position[2] += -0.32
+            self.plane_position[2] += -0.24
 
     def reset(self):
         # load urdf if it's the first time that reset() gets called
@@ -162,15 +162,15 @@ class MultiURDFBasedRobot(XmlBasedRobot):
 
             if self.has_spring:
                 # add constraints
-                rest_length = 0.3
+                rest_length =1.27
                 box_urdf = str(ASSETS_DIR / "objects" / "assembling_shape" / "sphere.urdf")
                 box_position = self.plane_position 
-                box_position[2] += 0.0
-                box = self._p.loadURDF(box_urdf, useFixedBase=True, globalScaling=0.5, basePosition=self.plane_position)
+                box_position[2] += -0.45
+                box = self._p.loadURDF(box_urdf, useFixedBase=True, globalScaling=0.5, basePosition=box_position)
                 self.addToScene(box)
                 self.box = box
-                c_spring = self._p.createConstraint(box, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, 0], [0, 0, rest_length], [0, 0, 0], [0,0,0,1], [0,0,0,1])
-                self._p.changeConstraint(c_spring, maxForce=40)
+                c_spring = self._p.createConstraint(box, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, rest_length], [0, 0, 0], [0, 0, 0], [0,0,0,1], [0,0,0,1])
+                self._p.changeConstraint(c_spring, maxForce=30)
                 self._p.addUserDebugLine([0,0,0.1], [0,0,-0.1], [1, 0, 0], 1, 100)
             # for target_name in self.target_keys:
             #     self.target_bodies[target_name] = self._p.loadURDF(

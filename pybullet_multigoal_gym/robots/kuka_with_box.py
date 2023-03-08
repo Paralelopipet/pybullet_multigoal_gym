@@ -1,4 +1,5 @@
 import numpy as np
+import pybullet
 import quaternion as quat
 from gym import spaces
 
@@ -164,7 +165,7 @@ class KukaBox(MultiURDFBasedRobot):
             self.base_force_sensor_enabled = True
 
         # move position to the initial configuration
-        self._p.resetBasePositionAndOrientation(self.robot_id, [0.0, 0.0, 0.0], [0, 0, 0, 1]) 
+        self._p.resetBasePositionAndOrientation(self.robot_id, [-0.1, 0, 0.00], pybullet.getQuaternionFromEuler([0.0, 0.0, 0])) 
         if self.has_spring:
             box_position = self.plane_position
             # box_position[2] -= 0.05
