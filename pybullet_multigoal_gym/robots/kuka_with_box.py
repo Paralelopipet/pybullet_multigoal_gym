@@ -222,12 +222,13 @@ class KukaBox(MultiURDFBasedRobot):
                 joint_poses = self.joint_state_target.copy()
             else:
                 # actions alter the ee target pose
-                self.end_effector_target += (a[:3] * 0.01)
-                self.end_effector_target = np.clip(self.end_effector_target,
-                                                   self.end_effector_xyz_lower,
-                                                   self.end_effector_xyz_upper)
+                # # self.end_effector_target += (a[:3] * 0.01)
+                # self.end_effector_target = np.clip(self.end_effector_target,
+                #                                    self.end_effector_xyz_lower,
+                #                                    self.end_effector_xyz_upper)
                 if not self.end_effector_rotation_control:
-                    joint_poses = self.compute_ik(target_ee_pos=self.end_effector_target)
+                    # joint_poses = self.compute_ik(target_ee_pos=self.end_effector_target)
+                    joint_poses = self.compute_ik(target_ee_pos=a[:3])
                 else:
                     self.end_effector_target_rot += (a[3:6] * 0.05)
                     # quat.from_euler_angles --> (a, b, c, w)
