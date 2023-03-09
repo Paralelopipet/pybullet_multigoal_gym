@@ -11,6 +11,8 @@ import numpy as np
 from seer.environment import GymEnvironment
 from seer.trajectory import TestTrajectory, SimpleTrajectory
 import time 
+from typing import List
+from pybullet_multigoal_gym.utils.noise_generation import add_noise
 f, axarr = plt.subplots(1, 2)
 
 env: KukaTipOverEnv = pmg.make_env(task='tip_over',
@@ -27,12 +29,14 @@ env: KukaTipOverEnv = pmg.make_env(task='tip_over',
                    observation_cam_id=[0],
                    goal_cam_id=0,
                    target_range=0.3,
-                   plane_position=[0,0,-0.58]
+                   plane_position=[0,0,-0.58],
                    )
 
 obs = env.reset()
+# TODO May need to call reset to get a new target
 t = 0
 done = False
+env.seed(1)
 controllerEnv =  GymEnvironment(env)
 controller = ForceAngleController(controllerEnv)
 testTrajectory = TestTrajectory(None, None)
@@ -48,24 +52,40 @@ def normalize(v):
        return v
     return v / norm
 
-def get_action(newJointPositions):
+def get_action(newJointPositions, action_noise_std=0.05):
     currentJointPositions = env.robot.joint_state_target
     delta = np.array(newJointPositions) - np.array(currentJointPositions)
-    deltaUnit = normalize(delta)
-    action = deltaUnit
+    maxComponent = np.max(np.abs(delta))    
+    # delta /= (maxComponent + 1e-3)
+    if action_noise_std > 0.0:
+        delta = add_noise(delta, action_noise_std)
+    delta = normalize(delta)
+    #     delta = np.clip(delta, -1,1)
+    # deltaUnit = normalize(delta)
+    action = delta
     return action
 
+def distance(vec1 : List[float], vec2: List[float]):
+    assert len(vec1) == len(vec2)
+    return np.linalg.norm(np.array(vec1)-np.array(vec2))
+
+currentGoal = [0.,0.,0.,]
 while True:
     t += 1
     newJointPositions = controller.getNextJointPositions()
-    action = get_action(newJointPositions)
-    # action = controller.trajectory.getPosition(time.time())
-    # action = np.clip(action, -1, 1)
+    action = get_action(newJointPositions, 0)
 
-    print(action)
+    # action = controller.trajectory.getPosition(time.time())
     obs, reward, done, info = env.step(action)
-    # axarr[0].imshow(obs['desired_goal_img'])
-    # axarr[1].imshow(obs['achieved_goal_img'])
-    # plt.pause(0.0001)
+    desiredGoal = obs["desired_goal"]
+    # print(desiredGoal)
+    # print(distance(desiredGoal, currentGoal))
+    if distance(desiredGoal, currentGoal) > 0.1:
+        currentPosition = controller.getEndEffectorWorldPosition()
+        trajectory = SimpleTrajectory(currentPosition, desiredGoal, time.time())
+        controller.setTrajectory(trajectory)
+        currentGoal = desiredGoal
+    goalAchieved = info["goal_achieved"]
     # if done:
-    #     env.reset()
+    if goalAchieved:
+        env.reset()
