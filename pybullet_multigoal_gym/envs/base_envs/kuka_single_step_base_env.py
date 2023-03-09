@@ -2,6 +2,7 @@ import os
 import numpy as np
 from pybullet_multigoal_gym.envs.base_envs.base_env import BaseBulletMGEnv
 from pybullet_multigoal_gym.robots.kuka import Kuka
+from pybullet_multigoal_gym.utils.gravity import gravity_vector
 
 
 class KukaBulletMGEnv(BaseBulletMGEnv):
@@ -14,7 +15,7 @@ class KukaBulletMGEnv(BaseBulletMGEnv):
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
                  gripper_type='parallel_jaw', table_type='table', obj_range=0.15, target_range=0.15,
                  target_in_the_air=True, end_effector_start_on_table=False,
-                 distance_threshold=0.05, joint_control=False, grasping=False, has_obj=False):
+                 distance_threshold=0.05, joint_control=False, grasping=False, has_obj=False, gravity_angle=0.00):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -71,7 +72,7 @@ class KukaBulletMGEnv(BaseBulletMGEnv):
         BaseBulletMGEnv.__init__(self, robot=robot, render=render,
                                  image_observation=image_observation, goal_image=goal_image,
                                  camera_setup=camera_setup,
-                                 seed=0, timestep=0.002, frame_skip=20)
+                                 seed=0, gravity=gravity_vector(gravity_angle), timestep=0.002, frame_skip=20)
 
     def _task_reset(self, test=False):
         if not self.objects_urdf_loaded:

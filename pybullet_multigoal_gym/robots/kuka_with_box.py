@@ -22,7 +22,8 @@ class KukaBox(MultiURDFBasedRobot):
                                 self_collision=False,
                                 fixed_base=False,
                                 plane_position=plane_position,
-                                has_spring = has_spring)
+                                has_spring = has_spring,
+                                joint_force_sensors = joint_force_sensors)
         self.kuka_body_index: int = None
         self.body_joint_index: int = None
         self.kuka_joint_index = None
@@ -155,11 +156,7 @@ class KukaBox(MultiURDFBasedRobot):
                     self.jdict['iiwa_gripper_finger1_joint'].jointIndex,
                     self.jdict['iiwa_gripper_finger2_joint'].jointIndex,
                 ]
-        if self.joint_force_sensors:
-            for i in range(1,8):
-                self._p.enableJointForceTorqueSensor(bodyUniqueId=self.robot_id,
-                                                 jointIndex=self.jdict['iiwa_joint_'+str(i)].jointIndex,
-                                                 enableSensor=True)
+
         if not self.end_effector_force_sensor_enabled:
             self._p.enableJointForceTorqueSensor(bodyUniqueId=self.kuka_body_index,
                                                  jointIndex=self.jdict['iiwa_joint_7'].jointIndex,

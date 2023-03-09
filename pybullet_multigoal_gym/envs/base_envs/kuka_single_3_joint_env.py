@@ -5,6 +5,7 @@ from typing import List
 import numpy as np
 from numpy.typing import NDArray
 from pybullet_multigoal_gym.utils.get_centre_of_mass import get_centre_of_mass
+from pybullet_multigoal_gym.utils.gravity import gravity_vector
 from pybullet_multigoal_gym.utils.noise_generation import add_noise_to_observations
 from scipy.spatial.transform import Rotation
 
@@ -21,7 +22,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
     Base class for the OpenAI multi-goal manipulation tasks with a Kuka iiwa 14 robot
     """
 
-    def __init__(self, render=True, binary_reward=True,
+    def __init__(self, render=True, binary_reward=True, gravity_angle = 0.0,
                  image_observation=False, goal_image=False, depth_image=False, visualize_target=True,
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
                  gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,  joint_force_sensors=False,
@@ -30,6 +31,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
+        self.gravity_angle = gravity_angle
         self.image_observation = image_observation
         self.goal_image = goal_image
         if depth_image:
@@ -114,7 +116,10 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._generate_goal(current_obj_pos=object_xyz_1)
         if self.goal_image:
             self._generate_goal_image(current_obj_pos=object_xyz_1)
-
+        
+        #reset gravity
+        gravity_vec = gravity_vector(self.gravity_angle)
+        self._p.setGravity(gravity_vec[0], gravity_vec[1], gravity_vec[2])
     def _generate_goal(self, current_obj_pos=None):
         if current_obj_pos is None:
             # generate a goal around the gripper if no object is involved
@@ -151,8 +156,6 @@ class KukaBullet3Env(BaseBulletMGEnv):
         # robot state contains gripper xyz coordinates, orientation (and finger width)
         gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, joint_velocities, joint_forces, joint_torques = self.robot.calc_robot_state()
         assert self.desired_goal is not None
-        # print("Desired goal in 3D space", self.desired_goal)
-        # print("Current position of gripper", gripper_xyz)
         policy_state = state = gripper_xyz
         achieved_goal = gripper_xyz.copy()
         if self.has_obj:
@@ -178,7 +181,6 @@ class KukaBullet3Env(BaseBulletMGEnv):
             state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, state))
             policy_state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, policy_state))
 
-        
 
         # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7)
         # state = np.concatenate((state, centre_of_mass))
@@ -206,43 +208,37 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
     def _compute_reward(self, achieved_goal, desired_goal, observation):
         assert achieved_goal.shape == desired_goal.shape
+        reward = 0
         d = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
         not_achieved = (d > self.distance_threshold)
         if self.binary_reward:
-            return -not_achieved.astype(np.float32), ~not_achieved # TODO TRY Simple shaped reward with this but linearly scaled with time
+            return -not_achieved.astype(np.float32), ~not_achieved
         
-        # Collect params
-        reward = 0
-        achieved_reward = 10.0 # TODO Move to param
+
+        achieved_reward = 100.0 # TODO Move to param
         distance_factor = 10.0 # TODO Move to param
-        danger_penalty = self.tip_penalty / 10 # TODO Move to param
+        if not not_achieved:
+            reward += achieved_reward
+        reward += -d * distance_factor
         joints = observation[:7]
         gripper_xyz = observation[7:10]
         com = observation[10:13]
         force_angle = self.force_angle(com)
         is_tipped = self._tipped_over(force_angle)
-        
-        # Compute reward
-        if not not_achieved:
-            reward += achieved_reward
-        else:
-            reward += -d * distance_factor
+
         # Add penalty for bad force angle
         if force_angle == np.inf:
             reward += self.force_angle_reward_factor * 1 # max reward for good stability
         elif force_angle == -np.inf:
             reward += self.tip_penalty
-        elif force_angle > 0:
-            # reward += self.force_angle_penalty_factor * -1 / (100 * force_angle) + 0.5
-            sigmoid_reward = 2 * (1/(1 + np.exp(-force_angle)) - 0.5)
-            reward += abs(self.force_angle_reward_factor) * sigmoid_reward
-        elif force_angle <= 0 and force_angle > -1:
-            reward += abs(danger_penalty) * 2 * (1/(1 + np.exp(-force_angle)) - 0.5)
-        elif force_angle <= -1: #
-            reward += self.tip_penalty
         else:
-            assert False # should not be reached
-
+            if force_angle > 0:
+                # reward += self.force_angle_penalty_factor * -1 / (100 * force_angle) + 0.5
+                reward += self.force_angle_reward_factor * 1/(1 + np.exp(-force_angle)) - 0.5
+            else:
+                reward += self.tip_penalty
+        # if is_tipped:
+        #     reward += self.tip_penalty
         return reward, ~not_achieved
 
     def set_object_pose(self, body_id, position, orientation=None):

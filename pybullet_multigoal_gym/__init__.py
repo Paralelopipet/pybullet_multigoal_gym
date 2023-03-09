@@ -1,7 +1,7 @@
 from gym.envs.registration import register, make, registry
 
 
-def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, binary_reward=True,
+def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, binary_reward=True, gravity_angle = 0.0,
              grip_informed_goal=False, task_decomposition=False,
              joint_control=False, max_episode_steps=50, distance_threshold=0.05,
              primitive=None,
@@ -96,6 +96,7 @@ def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, bi
                 kwargs={
                     'render': render,
                     'binary_reward': binary_reward,
+                    'gravity_angle' : gravity_angle,
                     'joint_control': joint_control,
                     'distance_threshold': distance_threshold,
                     'image_observation': image_observation,
