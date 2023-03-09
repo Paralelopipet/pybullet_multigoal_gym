@@ -5,7 +5,7 @@ import pybullet
 
 from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
 from pybullet_multigoal_gym.utils.get_total_mass import get_total_mass
-
+from seer.evaluation_tools.rl_configs import run_params, SPRING_FORCE
 
 class XmlBasedRobot(object):
     """Base class for .xml based agents."""
@@ -106,7 +106,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
     """Base class for URDF .xml based robots."""
 
     def __init__(self, bullet_client, model_urdf: str, plane_urdf: str, robot_name, base_position=None,
-                 base_orientation=None, plane_position=[0., 0., -1.], has_spring = False, fixed_base=False, self_collision=False):
+                 base_orientation=None, plane_position=[0., 0., -1.], has_spring = False, joint_force_sensors=False, fixed_base=False, self_collision=False):
         XmlBasedRobot.__init__(self,
                                bullet_client=bullet_client,
                                robot_name=robot_name,
@@ -122,6 +122,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         self.plane_position = plane_position
         self.fixed_base = fixed_base
         self.has_spring = has_spring
+        self.joint_force_sensors = joint_force_sensors
         self.robot_urdf_loaded = False
         self.target_keys = ['target_red', 'target_blue', 'target_green', 'target_purple']
         self.target_bodies = {
@@ -170,7 +171,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
                 self.addToScene(box)
                 self.box = box
                 c_spring = self._p.createConstraint(box, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, rest_length], [0, 0, 0], [0, 0, 0], [0,0,0,1], [0,0,0,1])
-                self._p.changeConstraint(c_spring, maxForce=30)
+                self._p.changeConstraint(c_spring, maxForce=run_params[SPRING_FORCE])
                 self._p.addUserDebugLine([0,0,0.1], [0,0,-0.1], [1, 0, 0], 1, 100)
             # for target_name in self.target_keys:
             #     self.target_bodies[target_name] = self._p.loadURDF(
@@ -178,6 +179,13 @@ class MultiURDFBasedRobot(XmlBasedRobot):
             #         basePosition=self.target_initial_pos[target_name][:3],
             #         baseOrientation=self.target_initial_pos[target_name][3:])
         # reset robot-specific configuration
+            
+            # Enable joint force sensors
+            if self.joint_force_sensors:
+                for i in range(1,8):
+                    self._p.enableJointForceTorqueSensor(bodyUniqueId=self.robot_id,
+                                                    jointIndex=self.jdict['iiwa_joint_'+str(i)].jointIndex,
+                                                    enableSensor=True)
         self.total_mass = self.calculateTotalMass()
         self.robot_specific_reset()
 
@@ -296,8 +304,8 @@ class Joint:
         #   jointVelocity: The velocity value of this joint
         #   jointReactionForces
         #   appliedJointMotorTorque
-        x, vx, fx, _ = self._p.getJointState(self.bodies[self.bodyIndex], self.jointIndex)
-        return x, vx, fx
+        x, vx, fx, tor = self._p.getJointState(self.bodies[self.bodyIndex], self.jointIndex)
+        return x, vx, fx, tor
 
     def get_position(self):
         x, _, _ = self.get_state()
