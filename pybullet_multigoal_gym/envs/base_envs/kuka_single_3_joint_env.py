@@ -250,5 +250,6 @@ class KukaBullet3Env(BaseBulletMGEnv):
     def get_centre_of_mass(self) -> NDArray:
         return get_centre_of_mass(self._p, self.robot.robot_id, self.robot.total_mass)
 
-    def get_p(self):
-        return self._p
+    @property 
+    def p(self):
+        return self._p 

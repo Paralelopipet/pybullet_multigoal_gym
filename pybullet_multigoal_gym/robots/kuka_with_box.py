@@ -1,4 +1,5 @@
 import numpy as np
+import pybullet
 import quaternion as quat
 from gym import spaces
 
@@ -107,6 +108,7 @@ class KukaBox(MultiURDFBasedRobot):
             if self.grasping:
                 self.action_space = spaces.Box(-np.ones([8]), np.ones([8]))
             else:
+                # self.action_space = spaces.Box(-10*np.ones([7]), 10*np.ones([7])) # TODO Modify range when changing from POSITION_CONTROL
                 self.action_space = spaces.Box(-np.ones([7]), np.ones([7])) # TODO Modify range when changing from POSITION_CONTROL
         else:
             if self.grasping:
@@ -164,7 +166,7 @@ class KukaBox(MultiURDFBasedRobot):
             self.base_force_sensor_enabled = True
 
         # move position to the initial configuration
-        self._p.resetBasePositionAndOrientation(self.robot_id, [0.0, 0.0, 0.0], [0, 0, 0, 1]) 
+        self._p.resetBasePositionAndOrientation(self.robot_id, [-0.1, 0, 0.00], pybullet.getQuaternionFromEuler([0.0, 0.0, 0])) 
         if self.has_spring:
             box_position = self.plane_position
             # box_position[2] -= 0.05
@@ -220,9 +222,10 @@ class KukaBox(MultiURDFBasedRobot):
             if self.joint_control:
                 self.joint_state_target = (a[:7] * 0.05) + self.joint_state_target
                 joint_poses = self.joint_state_target.copy()
+                # joint_poses = a[:7]
             else:
-                # # actions alter the ee target pose
-                # self.end_effector_target += (a[:3] * 0.01)
+                # actions alter the ee target pose
+                # # self.end_effector_target += (a[:3] * 0.01)
                 # self.end_effector_target = np.clip(self.end_effector_target,
                 #                                    self.end_effector_xyz_lower,
                 #                                    self.end_effector_xyz_upper)

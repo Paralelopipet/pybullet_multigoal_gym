@@ -20,7 +20,7 @@ env: KukaTipOverEnv = pmg.make_env(task='tip_over',
                    observation_cam_id=[0],
                    goal_cam_id=0,
                    target_range=0.3,
-                   plane_position = [0.,0.,-0.5]
+                   plane_position = [0.,0.,-0.58],
                    )
 obs = env.reset()
 t = 0
