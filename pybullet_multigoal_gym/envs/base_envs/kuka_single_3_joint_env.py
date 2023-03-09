@@ -72,6 +72,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.desired_goal = None
         self.desired_goal_image = None
 
+        self.cycle_time = 0
+
         robot = KukaBox (grasping=grasping,
                      joint_control=joint_control,
                      gripper_type=gripper_type,
@@ -121,6 +123,10 @@ class KukaBullet3Env(BaseBulletMGEnv):
         #reset gravity
         gravity_vec = gravity_vector(self.gravity_angle)
         self._p.setGravity(gravity_vec[0], gravity_vec[1], gravity_vec[2])
+
+        # reset time
+        self.cycle_time = 0
+
     def _generate_goal(self, current_obj_pos=None):
         if current_obj_pos is None:
             # generate a goal around the gripper if no object is involved
@@ -187,9 +193,11 @@ class KukaBullet3Env(BaseBulletMGEnv):
             state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, state))
             policy_state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, policy_state))
 
+        # count time
+        self.cycle_time += 1
 
-        # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7)
-        # state = np.concatenate((state, centre_of_mass))
+        # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), time(1)
+        state = np.concatenate((state, [self.cycle_time]))
 
         obs_dict = {'observation': state.copy(),
                     'policy_state': policy_state.copy(),
