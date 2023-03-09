@@ -112,7 +112,8 @@ def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, bi
                     'force_angle_reward_factor': force_angle_reward_factor,
                     'plane_position': plane_position,
                     'has_spring' : has_spring,
-                    'joint_force_sensors' :  joint_force_sensors
+                    'joint_force_sensors' :  joint_force_sensors,
+                    'noise_stds': noise_stds
                 },
                 max_episode_steps=max_episode_steps,
             )
