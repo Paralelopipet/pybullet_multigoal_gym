@@ -64,6 +64,7 @@ while True:
 
     print(action)
     obs, reward, done, info = env.step(action)
+    desired_goal = obs['desired_goal']
     # axarr[0].imshow(obs['desired_goal_img'])
     # axarr[1].imshow(obs['achieved_goal_img'])
     # plt.pause(0.0001)
