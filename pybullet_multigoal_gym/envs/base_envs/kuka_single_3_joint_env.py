@@ -15,6 +15,7 @@ from pybullet_multigoal_gym.utils.assets_dir import CUBE_LINK_NAME
 from seer.stability_metrics.adapter.stability_metric_adapter import \
     StabilityMetricAdapter
 from seer.stability_metrics.adapter.types import RobotConfig, RobotState
+import wandb
 
 
 class KukaBullet3Env(BaseBulletMGEnv):
@@ -174,6 +175,11 @@ class KukaBullet3Env(BaseBulletMGEnv):
             assert not self.grasping, "grasping should not be true when there is no objects"
 
         centre_of_mass = self.get_centre_of_mass()
+        if wandb.run:
+            wandb.log({
+                'force_angle': self.force_angle(centre_of_mass),
+                # TODO: Also log time
+            })
 
         [joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass] = add_noise_to_observations(joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass, self.noise_stds)
 
