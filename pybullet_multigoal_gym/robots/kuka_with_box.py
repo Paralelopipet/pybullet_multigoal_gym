@@ -12,7 +12,7 @@ class KukaBox(MultiURDFBasedRobot):
                  joint_control=False, grasping=False, end_effector_rotation_control=False, end_effector_force_sensor=False,
                  primitive=None, workspace_range=None, resolution=0.002,
                  end_effector_start_on_table=False, table_surface_z=0.175,
-                 obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring = False):
+                 obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring = False, joint_force_sensors = False):
         self.gripper_type = gripper_type
         MultiURDFBasedRobot.__init__(self,
                                 bullet_client=bullet_client,
@@ -30,6 +30,7 @@ class KukaBox(MultiURDFBasedRobot):
         self.kuka_rest_pose = [0, -0.5592432, 0, 1.733180, 0, -0.8501557, 0]
         self.kuka_away_pose = [0, 0.5467089, 0, 4.518901, 0, 0.828478, 0]
         self.joint_state_target = None
+        self.joint_force_sensors = joint_force_sensors
         self.end_effector_force_sensor = end_effector_force_sensor
         self.end_effector_force_sensor_enabled = False
         self.base_force_sensor_enabled = False 
@@ -154,6 +155,11 @@ class KukaBox(MultiURDFBasedRobot):
                     self.jdict['iiwa_gripper_finger1_joint'].jointIndex,
                     self.jdict['iiwa_gripper_finger2_joint'].jointIndex,
                 ]
+        if self.joint_force_sensors:
+            for i in range(1,8):
+                self._p.enableJointForceTorqueSensor(bodyUniqueId=self.robot_id,
+                                                 jointIndex=self.jdict['iiwa_joint_'+str(i)].jointIndex,
+                                                 enableSensor=True)
         if not self.end_effector_force_sensor_enabled:
             self._p.enableJointForceTorqueSensor(bodyUniqueId=self.kuka_body_index,
                                                  jointIndex=self.jdict['iiwa_joint_7'].jointIndex,
@@ -180,7 +186,7 @@ class KukaBox(MultiURDFBasedRobot):
         self.move_finger(grip_ctrl=self.gripper_abs_joint_limit)
         self.end_effector_target = self.parts['iiwa_gripper_tip'].get_position()
         self.end_effector_target_rot = self.parts['iiwa_gripper_tip'].get_orientation_eular()
-        self.joint_state_target, _ = self.get_kuka_joint_state()
+        self.joint_state_target, _, _, _ = self.get_kuka_joint_state()
 
     def apply_action(self, a):
         assert self.action_space.contains(a)
@@ -265,15 +271,15 @@ class KukaBox(MultiURDFBasedRobot):
             gripper_finger_closeness = np.array([0.0])
             gripper_finger_vel = np.array([0.0])
 
-        joint_poses, _ = self.get_kuka_joint_state()
+        joint_poses, joint_velocities, joint_forces, joint_torques = self.get_kuka_joint_state()
 
         if self.end_effector_force_sensor:
             (fx, fy, fz, mx, my, mz) = self.jdict['iiwa_joint_7'].get_force()
             # fz += 22.10853  # compensate gravity force
             ee_joint_fx = np.clip(np.array([fx, fy, fz]), -50.0, 50.0)
-            return gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, ee_joint_fx
+            return gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, joint_velocities, joint_forces, joint_torques, ee_joint_fx
         else:
-            return gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses
+            return gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, joint_velocities, joint_forces, joint_torques
 
     def compute_ik(self, target_ee_pos, target_ee_quat=None):
         assert target_ee_pos.shape == (3,)
@@ -342,11 +348,15 @@ class KukaBox(MultiURDFBasedRobot):
     def get_kuka_joint_state(self):
         kuka_joint_pos = []
         kuka_joint_vel = []
+        kuka_joint_fx = []
+        kuka_joint_tor = []
         for i in range(len(self.kuka_joint_index)):
-            x, vx, _ = self.jdict['iiwa_joint_' + str(self.kuka_joint_index[i])].get_state()
+            x, vx, fx, tor = self.jdict['iiwa_joint_' + str(self.kuka_joint_index[i])].get_state()
             kuka_joint_pos.append(x)
             kuka_joint_vel.append(vx)
-        return kuka_joint_pos, kuka_joint_vel
+            kuka_joint_fx.append(fx)
+            kuka_joint_tor.append(tor)
+        return kuka_joint_pos, kuka_joint_vel, kuka_joint_fx, kuka_joint_tor
 
     def set_kuka_joint_state(self, pos=None, vel=None, gripper_tip_pos=None):
         if gripper_tip_pos is not None:
@@ -361,7 +371,7 @@ class KukaBox(MultiURDFBasedRobot):
         finger_joint_pos = []
         finger_joint_vel = []
         for name in self.gripper_joint_name:
-            x, vx, _ = self.jdict[name].get_state()
+            x, vx, _, _ = self.jdict[name].get_state()
             finger_joint_pos.append(x)
             finger_joint_vel.append(vx)
         return finger_joint_pos, finger_joint_vel

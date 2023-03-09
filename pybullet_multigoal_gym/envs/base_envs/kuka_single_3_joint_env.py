@@ -1,9 +1,11 @@
+from collections import defaultdict
 import os
 from typing import List
 
 import numpy as np
 from numpy.typing import NDArray
 from pybullet_multigoal_gym.utils.get_centre_of_mass import get_centre_of_mass
+from pybullet_multigoal_gym.utils.noise_generation import add_noise_to_observations
 from scipy.spatial.transform import Rotation
 
 from pybullet_multigoal_gym.envs.base_envs.base_env import BaseBulletMGEnv
@@ -22,9 +24,9 @@ class KukaBullet3Env(BaseBulletMGEnv):
     def __init__(self, render=True, binary_reward=True,
                  image_observation=False, goal_image=False, depth_image=False, visualize_target=True,
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
-                 gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,
+                 gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,  joint_force_sensors=False,
                  target_in_the_air=True, end_effector_start_on_table=False,
-                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, force_angle_reward_factor=1.0):
+                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, force_angle_reward_factor=1.0, noise_stds = {}):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -47,6 +49,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.target_range = target_range
         self.plane_position = plane_position
         self.has_spring = has_spring
+        self.joint_force_sensors =  joint_force_sensors
         self.object_assets_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "objects")
         self.objects_urdf_loaded = False
         self.object_bodies = {
@@ -61,6 +64,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.tip_penalty = tip_penalty
         self.force_angle_reward_factor = force_angle_reward_factor
 
+        self.noise_stds = noise_stds# has 'pos', 'vel', 'tor' and 'com'
+
         self.desired_goal = None
         self.desired_goal_image = None
 
@@ -68,7 +73,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                      joint_control=joint_control,
                      gripper_type=gripper_type,
                      end_effector_start_on_table=end_effector_start_on_table,
-                     obj_range=self.obj_range, target_range=self.target_range, plane_position=self.plane_position, has_spring=self.has_spring)
+                     obj_range=self.obj_range, target_range=self.target_range, plane_position=self.plane_position, has_spring=self.has_spring,  joint_force_sensors=self.joint_force_sensors)
 
         self._force_angle_calculator = StabilityMetricAdapter.instance(
             RobotConfig(cube_link_name=CUBE_LINK_NAME, urdf_path=robot.model_urdf)
@@ -144,7 +149,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
     def _get_obs(self):
         # robot state contains gripper xyz coordinates, orientation (and finger width)
-        gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses = self.robot.calc_robot_state()
+        gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, joint_velocities, joint_forces, joint_torques = self.robot.calc_robot_state()
         assert self.desired_goal is not None
         policy_state = state = gripper_xyz
         achieved_goal = gripper_xyz.copy()
@@ -163,14 +168,18 @@ class KukaBullet3Env(BaseBulletMGEnv):
         else:
             assert not self.grasping, "grasping should not be true when there is no objects"
 
-        if self.joint_control:
-            state = np.concatenate((joint_poses, state))
-            policy_state = np.concatenate((joint_poses, policy_state))
-
         centre_of_mass = self.get_centre_of_mass()
 
-        # Final state: joints (7), gripper_xyz (3), COM (3)
-        state = np.concatenate((state, centre_of_mass))
+        [joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass] = add_noise_to_observations(joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass, self.noise_stds)
+
+        if self.joint_control:
+            state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, state))
+            policy_state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, policy_state))
+
+        
+
+        # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7)
+        # state = np.concatenate((state, centre_of_mass))
 
         obs_dict = {'observation': state.copy(),
                     'policy_state': policy_state.copy(),
@@ -209,7 +218,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         reward += -d * distance_factor
         joints = observation[:7]
         gripper_xyz = observation[7:10]
-        com = observation[10:]
+        com = observation[10:13]
         force_angle = self.force_angle(com)
         is_tipped = self._tipped_over(force_angle)
 

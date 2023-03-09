@@ -296,8 +296,8 @@ class Joint:
         #   jointVelocity: The velocity value of this joint
         #   jointReactionForces
         #   appliedJointMotorTorque
-        x, vx, fx, _ = self._p.getJointState(self.bodies[self.bodyIndex], self.jointIndex)
-        return x, vx, fx
+        x, vx, fx, tor = self._p.getJointState(self.bodies[self.bodyIndex], self.jointIndex)
+        return x, vx, fx, tor
 
     def get_position(self):
         x, _, _ = self.get_state()

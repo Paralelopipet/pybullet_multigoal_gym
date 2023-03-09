@@ -320,7 +320,7 @@ class Kuka(URDFBasedRobot):
         kuka_joint_pos = []
         kuka_joint_vel = []
         for i in range(len(self.kuka_joint_index)):
-            x, vx, _ = self.jdict['iiwa_joint_' + str(self.kuka_joint_index[i])].get_state()
+            x, vx, _, _ = self.jdict['iiwa_joint_' + str(self.kuka_joint_index[i])].get_state()
             kuka_joint_pos.append(x)
             kuka_joint_vel.append(vx)
         return kuka_joint_pos, kuka_joint_vel
@@ -338,7 +338,7 @@ class Kuka(URDFBasedRobot):
         finger_joint_pos = []
         finger_joint_vel = []
         for name in self.gripper_joint_name:
-            x, vx, _ = self.jdict[name].get_state()
+            x, vx, _, _ = self.jdict[name].get_state()
             finger_joint_pos.append(x)
             finger_joint_vel.append(vx)
         return finger_joint_pos, finger_joint_vel
