@@ -5,7 +5,7 @@ import pybullet
 
 from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
 from pybullet_multigoal_gym.utils.get_total_mass import get_total_mass
-
+from seer.evaluation_tools.rl_configs import run_params, SPRING_FORCE
 
 class XmlBasedRobot(object):
     """Base class for .xml based agents."""
@@ -171,7 +171,7 @@ class MultiURDFBasedRobot(XmlBasedRobot):
                 self.addToScene(box)
                 self.box = box
                 c_spring = self._p.createConstraint(box, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, rest_length], [0, 0, 0], [0, 0, 0], [0,0,0,1], [0,0,0,1])
-                self._p.changeConstraint(c_spring, maxForce=30)
+                self._p.changeConstraint(c_spring, maxForce=run_params[SPRING_FORCE])
                 self._p.addUserDebugLine([0,0,0.1], [0,0,-0.1], [1, 0, 0], 1, 100)
             # for target_name in self.target_keys:
             #     self.target_bodies[target_name] = self._p.loadURDF(
