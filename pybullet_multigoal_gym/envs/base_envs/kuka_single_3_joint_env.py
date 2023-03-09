@@ -181,11 +181,6 @@ class KukaBullet3Env(BaseBulletMGEnv):
             assert not self.grasping, "grasping should not be true when there is no objects"
 
         centre_of_mass = self.get_centre_of_mass()
-        if wandb.run:
-            wandb.log({
-                'force_angle': self.force_angle(centre_of_mass),
-                # TODO: Also log time
-            })
 
         [joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass] = add_noise_to_observations(joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass, self.noise_stds)
 
@@ -198,6 +193,12 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), time(1)
         state = np.concatenate((state, [self.cycle_time]))
+        if wandb.run:
+            wandb.log({
+                'force_angle': self.force_angle(centre_of_mass),
+                'observations_complete': state,
+                'cycle_time': self.cycle_time,
+        })
 
         obs_dict = {'observation': state.copy(),
                     'policy_state': policy_state.copy(),
