@@ -151,6 +151,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
         # robot state contains gripper xyz coordinates, orientation (and finger width)
         gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, joint_velocities, joint_forces, joint_torques = self.robot.calc_robot_state()
         assert self.desired_goal is not None
+        # print("Desired goal in 3D space", self.desired_goal)
+        # print("Current position of gripper", gripper_xyz)
         policy_state = state = gripper_xyz
         achieved_goal = gripper_xyz.copy()
         if self.has_obj:
@@ -204,37 +206,43 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
     def _compute_reward(self, achieved_goal, desired_goal, observation):
         assert achieved_goal.shape == desired_goal.shape
-        reward = 0
         d = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
         not_achieved = (d > self.distance_threshold)
         if self.binary_reward:
-            return -not_achieved.astype(np.float32), ~not_achieved
+            return -not_achieved.astype(np.float32), ~not_achieved # TODO TRY Simple shaped reward with this but linearly scaled with time
         
-
-        achieved_reward = 100.0 # TODO Move to param
+        # Collect params
+        reward = 0
+        achieved_reward = 10.0 # TODO Move to param
         distance_factor = 10.0 # TODO Move to param
-        if not not_achieved:
-            reward += achieved_reward
-        reward += -d * distance_factor
+        danger_penalty = self.tip_penalty / 10 # TODO Move to param
         joints = observation[:7]
         gripper_xyz = observation[7:10]
         com = observation[10:13]
         force_angle = self.force_angle(com)
         is_tipped = self._tipped_over(force_angle)
-
+        
+        # Compute reward
+        if not not_achieved:
+            reward += achieved_reward
+        else:
+            reward += -d * distance_factor
         # Add penalty for bad force angle
         if force_angle == np.inf:
             reward += self.force_angle_reward_factor * 1 # max reward for good stability
         elif force_angle == -np.inf:
             reward += self.tip_penalty
+        elif force_angle > 0:
+            # reward += self.force_angle_penalty_factor * -1 / (100 * force_angle) + 0.5
+            sigmoid_reward = 2 * (1/(1 + np.exp(-force_angle)) - 0.5)
+            reward += abs(self.force_angle_reward_factor) * sigmoid_reward
+        elif force_angle <= 0 and force_angle > -1:
+            reward += abs(danger_penalty) * 2 * (1/(1 + np.exp(-force_angle)) - 0.5)
+        elif force_angle <= -1: #
+            reward += self.tip_penalty
         else:
-            if force_angle > 0:
-                # reward += self.force_angle_penalty_factor * -1 / (100 * force_angle) + 0.5
-                reward += self.force_angle_reward_factor * 1/(1 + np.exp(-force_angle)) - 0.5
-            else:
-                reward += self.tip_penalty
-        # if is_tipped:
-        #     reward += self.tip_penalty
+            assert False # should not be reached
+
         return reward, ~not_achieved
 
     def set_object_pose(self, body_id, position, orientation=None):
