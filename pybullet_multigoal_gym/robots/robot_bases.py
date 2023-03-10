@@ -5,7 +5,7 @@ import pybullet
 
 from pybullet_multigoal_gym.utils.assets_dir import ASSETS_DIR
 from pybullet_multigoal_gym.utils.get_total_mass import get_total_mass
-from seer.evaluation_tools.rl_configs import run_params, SPRING_FORCE
+from seer.train_and_eval_configs.base_config import run_params, SPRING_FORCE
 
 class XmlBasedRobot(object):
     """Base class for .xml based agents."""
