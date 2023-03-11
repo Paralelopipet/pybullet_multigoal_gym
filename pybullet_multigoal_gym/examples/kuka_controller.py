@@ -12,6 +12,7 @@ import time
 from typing import List
 from pybullet_multigoal_gym.utils.noise_generation import add_noise
 # f, axarr = plt.subplots(1, 2)
+import wandb
 
 def normalize(v):
     norm = np.linalg.norm(v)
@@ -40,7 +41,6 @@ def distance(vec1 : List[float], vec2: List[float]):
 
 def run(env, seed=11):
     obs = env.reset()
-    t = 0
     done = False
     env.seed(seed)
     controllerEnv =  GymEnvironment(env)
@@ -50,9 +50,15 @@ def run(env, seed=11):
     # testTrajectory = SimpleTrajectory(controller.getEndEffectorWorldPosition(), controller.getEndEffectorWorldPosition(), time.time())
     controller.setTrajectory(testTrajectory)
     currentGoal = [0.,0.,0.,]
-
+    timeOfReset = time.time()
+    stepsSinceReset = 0
+    successes = 1 
+    fails = 1
+    tipovers = 0
+    steps = 0
     while True:
-        t += 1
+        stepsSinceReset += 1
+        steps += 1
         newJointPositions = controller.getNextJointPositions()
         action = get_action(env, newJointPositions, 0)
 
@@ -66,14 +72,37 @@ def run(env, seed=11):
             trajectory = SimpleTrajectory(currentPosition, desiredGoal, time.time())
             controller.setTrajectory(trajectory)
             currentGoal = desiredGoal
+
         goalAchieved = info["goal_achieved"]
-        # if done:
+
         if goalAchieved:
+            successes += 1
             env.reset()
+            if wandb.run:
+                wandb.log({"time_to_goal": time.time()-timeOfReset,
+                           "steps_to_goal": stepsSinceReset})
+            timeOfReset = time.time()
+            stepsSinceReset = 0
+        elif time.time() - timeOfReset > 10:
+            # if takes longer than 10s assume it cannot reach target
+            fails += 1 
+            if env.tipped_over():
+                tipovers += 1
+            env.reset()
+            timeOfReset = time.time()
+            stepsSinceReset = 0
+        
+        if wandb.run:
+            wandb.log({"success_rate" : successes/(successes + fails),
+                       "successes" : successes,
+                       "fails" : fails,
+                       'tipovers': tipovers,
+                       "steps" : steps})
+            
 
 if __name__ == "__main__":
     env: KukaTipOverEnv = pmg.make_env(task='tip_over',
-                   gripper='parallel_jaw_cube',
+                   gripper='parallel_jaw',
                    render=True,
                    binary_reward=True,
                    joint_control=True,

@@ -282,6 +282,7 @@ class KukaBox(MultiURDFBasedRobot):
         assert target_ee_pos.shape == (3,)
         if target_ee_quat is None:
             target_ee_quat = self.end_effector_fixed_quaternion
+            # target_ee_quat = None
         else:
             assert target_ee_quat.shape == (4,)
         # kuka-specific values for ik computation using null space dumping method,
@@ -291,6 +292,29 @@ class KukaBox(MultiURDFBasedRobot):
             endEffectorLinkIndex=self.end_effector_tip_joint_index,
             targetPosition=target_ee_pos,
             targetOrientation=target_ee_quat,
+            # lower limits for null space
+            lowerLimits=[-.967, -2, -2.96, -0.01, -0.01, -0.01, -0.01],
+            # lowerLimits=[-.967, -2, -2.96, 0.19, -2.96, -2.09, -3.05],
+            # upper limits for null space
+            upperLimits=[.967, 2, 2.96, 0.01, 0.01, 0.01, 0.01],
+            # upperLimits=[.967, 2, 2.96, 2.29, 2.96, 2.09, 3.05],
+            # joint ranges for null space
+            jointRanges=[5.8, 4, 5.8, 0.02, 0.02, 0.02, 0.02],
+            # jointRanges=[5.8, 4, 5.8, 4, 5.8, 4, 6],
+            restPoses=self.kuka_rest_pose,
+            maxNumIterations=40,
+            residualThreshold=0.00001)  # type: ignore
+        return joint_poses[:7]
+    
+    def compute_ik2(self,target_ee_pos):
+        assert target_ee_pos.shape == (3,)
+        # kuka-specific values for ik computation using null space dumping method,
+        #   obtained from https://github.com/bulletphysics/bullet3/blob/master/examples/pybullet/examples/inverse_kinematics.py
+        joint_poses = self._p.calculateInverseKinematics(
+            bodyUniqueId=self.kuka_body_index,
+            endEffectorLinkIndex=self.end_effector_tip_joint_index,
+            targetPosition=target_ee_pos,
+            targetOrientation=None,
             # lower limits for null space
             lowerLimits=[-.967, -2, -2.96, -0.01, -0.01, -0.01, -0.01],
             # lowerLimits=[-.967, -2, -2.96, 0.19, -2.96, -2.09, -3.05],
