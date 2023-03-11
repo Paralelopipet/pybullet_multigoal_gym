@@ -73,6 +73,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.desired_goal_image = None
 
         self.cycle_time = 0
+        self.total_steps = 0
 
         robot = KukaBox (grasping=grasping,
                      joint_control=joint_control,
@@ -121,8 +122,9 @@ class KukaBullet3Env(BaseBulletMGEnv):
             self._generate_goal_image(current_obj_pos=object_xyz_1)
         
         #reset gravity
-        gravity_vec = gravity_vector(self.gravity_angle)
-        self._p.setGravity(gravity_vec[0], gravity_vec[1], gravity_vec[2])
+        self.gravity_vec, self.gravity_phi, self.gravity_theta = gravity_vector(self.gravity_angle)
+        self._p.setGravity(self.gravity_vec[0], self.gravity_vec[1], self.gravity_vec[2])
+        self._p.addUserDebugLine([0,0,0], 10*self.gravity_vec,[0,1,0], lifeTime=5)
 
         # reset time
         self.cycle_time = 0
@@ -190,15 +192,18 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         # count time
         self.cycle_time += 1
+        self.total_steps += 1
 
-        # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), time(1)
+        # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), gravity(3), time(1)
+        # TODO Investigate gravity observations - robot training brakes
+        # state = np.concatenate((state, np.array([self.cycle_time, self.gravity_phi, self.gravity_theta])))
         state = np.concatenate((state, [self.cycle_time]))
         if wandb.run:
             wandb.log({
                 'force_angle': self.force_angle(centre_of_mass),
                 'observations_complete': state,
-                'cycle_time': self.cycle_time,
-        })
+                'cycle_time': self.cycle_time
+        }, step=self.total_steps)
 
         obs_dict = {'observation': state.copy(),
                     'policy_state': policy_state.copy(),

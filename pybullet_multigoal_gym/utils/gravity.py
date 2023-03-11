@@ -9,4 +9,4 @@ def gravity_vector(angle):
     x = np.sin(phi) * np.cos(theta)
     y = np.sin(phi) * np.sin(theta)
     z = np.cos(phi)
-    return np.array([x, y, z]) * (-9.81)
+    return np.array([x, y, z]) * (-9.81), phi, theta
