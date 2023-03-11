@@ -141,7 +141,7 @@ class BaseBulletMGEnv(gym.Env):
         info = {
             'goal_achieved': goal_achieved
         }
-        return obs, reward, False, info
+        return obs, reward, goal_achieved, info
 
     def render(self, mode="human", camera_id=0):
         assert mode in ['human', 'pcd', 'rgb_array', 'depth', 'rgbd_array'], "make sure you use a supported rendering mode"

@@ -73,7 +73,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.desired_goal = None
         self.desired_goal_image = None
 
-        self.cycle_time = 0
+        self.episode_steps = 0
         self.total_steps = 0
 
         # define parameters for work
@@ -107,7 +107,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                 'desired_goal_z' : self.desired_goal[2],
                 'positional work' : self.pos_work_integral,
                 'velocity work' : self.vel_work_integral
-        })
+        }, step=self.total_steps)
 
 
     def _task_reset(self, test=False):
@@ -148,7 +148,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._p.addUserDebugLine([0,0,0], 10*self.gravity_vec,[0,1,0], lifeTime=5)
 
         # reset time
-        self.cycle_time = 0
+        self.episode_steps = 0
 
         # reset work integrals
         self.last_joint_poses = None
@@ -229,18 +229,18 @@ class KukaBullet3Env(BaseBulletMGEnv):
             policy_state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, policy_state))
 
         # count time
-        self.cycle_time += 1
+        self.episode_steps += 1
         self.total_steps += 1
 
         # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), gravity(3), time(1)
         # TODO Investigate gravity observations - robot training brakes
         # state = np.concatenate((state, np.array([self.cycle_time, self.gravity_phi, self.gravity_theta])))
-        state = np.concatenate((state, [self.cycle_time]))
+        state = np.concatenate((state, [self.episode_steps]))
         if wandb.run:
             wandb.log({
                 'force_angle': self.force_angle(centre_of_mass),
-                'observations_complete': state,
-                'cycle_time': self.cycle_time,
+                # 'complete_observations_dict': state,
+                'episode_steps': self.episode_steps,
                 'max_joint_vel' : max(joint_velocities),
                 'joint_velocities' : joint_velocities,
                 'joint_torques' : joint_torques,
