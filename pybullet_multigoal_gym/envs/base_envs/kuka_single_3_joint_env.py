@@ -76,6 +76,11 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.cycle_time = 0
         self.total_steps = 0
 
+        # define parameters for work
+        self.vel_work_integral = 0 
+        self.pos_work_integral = 0 
+        self.last_joint_poses = None
+
         robot = KukaBox (grasping=grasping,
                      joint_control=joint_control,
                      gripper_type=gripper_type,
@@ -100,6 +105,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
                 'desired_goal_x' : self.desired_goal[0],
                 'desired_goal_y' : self.desired_goal[1],
                 'desired_goal_z' : self.desired_goal[2],
+                'positional work' : self.pos_work_integral,
+                'velocity work' : self.vel_work_integral
         })
 
 
@@ -142,6 +149,11 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         # reset time
         self.cycle_time = 0
+
+        # reset work integrals
+        self.last_joint_poses = None
+        pos_work_integral = 0
+        vel_work_integral = 0
 
     def _generate_goal(self, current_obj_pos=None):
         if current_obj_pos is None:
@@ -198,6 +210,18 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         centre_of_mass = self.get_centre_of_mass()
 
+        # calculate the work done! BOI
+        if self.last_joint_poses is None:
+            self.last_joint_poses = np.array(joint_poses)
+
+        # positional work done
+        pos_work = np.add(np.array(joint_poses), -self.last_joint_poses) * joint_torques
+        vel_work = self.dt * np.multiply((np.array(joint_velocities)), joint_torques)
+
+        self.pos_work_integral += pos_work
+        self.vel_work_integral += vel_work
+
+
         [joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass] = add_noise_to_observations(joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass, self.noise_stds)
 
         if self.joint_control:
@@ -216,7 +240,11 @@ class KukaBullet3Env(BaseBulletMGEnv):
             wandb.log({
                 'force_angle': self.force_angle(centre_of_mass),
                 'observations_complete': state,
-                'cycle_time': self.cycle_time
+                'cycle_time': self.cycle_time,
+                'max_joint_vel' : max(joint_velocities),
+                'joint_velocities' : joint_velocities,
+                'joint_torques' : joint_torques,
+                'simulation_time' : self.dt*self.total_steps # real world time that has passed within the simulation
         }, step=self.total_steps)
 
         obs_dict = {'observation': state.copy(),
