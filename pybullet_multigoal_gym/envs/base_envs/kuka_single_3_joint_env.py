@@ -278,6 +278,10 @@ class KukaBullet3Env(BaseBulletMGEnv):
     def get_centre_of_mass(self) -> NDArray:
         return get_centre_of_mass(self._p, self.robot.robot_id, self.robot.total_mass)
 
+    def tipped_over(self):
+        pos, orientation = self._p.getBasePositionAndOrientation(self.robot.robot_id)
+        return self._p.getAxisAngleFromQuaternion(orientation)[-1] > 0.5
+    
     @property 
     def p(self):
         return self._p 
