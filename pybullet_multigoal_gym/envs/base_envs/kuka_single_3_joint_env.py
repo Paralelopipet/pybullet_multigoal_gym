@@ -28,7 +28,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
                  gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,  joint_force_sensors=False,
                  target_in_the_air=True, end_effector_start_on_table=False,
-                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, force_angle_reward_factor=1.0, noise_stds = {}):
+                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, tipping_threshold=0.5, force_angle_reward_factor=1.0, noise_stds = {}):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -65,6 +65,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         }
 
         self.tip_penalty = tip_penalty
+        self.tipping_threshold = tipping_threshold
         self.force_angle_reward_factor = force_angle_reward_factor
 
         self.noise_stds = noise_stds# has 'pos', 'vel', 'tor' and 'com'
@@ -88,6 +89,19 @@ class KukaBullet3Env(BaseBulletMGEnv):
                                  image_observation=image_observation, goal_image=goal_image,
                                  camera_setup=camera_setup,
                                  seed=0, timestep=0.002, frame_skip=20)
+
+    def _log_before_reset(self):
+        is_tipped = self.tipped_over() # calculate if angle from z axis is higher than threshold
+        if self.desired_goal is None:
+            self.desired_goal = [0,0,0]
+        if wandb.run:
+            wandb.log({
+                'tipped_over': float(is_tipped),
+                'desired_goal_x' : self.desired_goal[0],
+                'desired_goal_y' : self.desired_goal[1],
+                'desired_goal_z' : self.desired_goal[2],
+        })
+
 
     def _task_reset(self, test=False):
         if not self.objects_urdf_loaded:
@@ -285,7 +299,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
     def tipped_over(self):
         pos, orientation = self._p.getBasePositionAndOrientation(self.robot.robot_id)
-        return self._p.getAxisAngleFromQuaternion(orientation)[-1] > 0.5
+        return self._p.getAxisAngleFromQuaternion(orientation)[-1] > self.tipping_threshold
     
     @property 
     def p(self):
