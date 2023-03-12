@@ -12,6 +12,7 @@ import time
 from typing import List
 from pybullet_multigoal_gym.utils.noise_generation import add_noise
 # f, axarr = plt.subplots(1, 2)
+from gym.utils import seeding 
 import wandb
 
 def normalize(v):
@@ -39,6 +40,15 @@ def distance(vec1 : List[float], vec2: List[float]):
     assert len(vec1) == len(vec2)
     return np.linalg.norm(np.array(vec1)-np.array(vec2))
 
+def genRandomGoal(robot, seed=11):
+    center = robot.end_effector_tip_initial_position.copy()
+    np_random, seed = seeding.np_random(seed)
+    while True:
+        # TODO currently generating points that are potentially to close or too far from the robot arm to reach
+        desired_goal = np_random.uniform(robot.target_bound_lower, robot.target_bound_upper)
+        if np.linalg.norm(desired_goal - center) > 0.1:
+            return desired_goal
+
 def run(env, seed=11):
     obs = env.reset()
     done = False
@@ -61,12 +71,14 @@ def run(env, seed=11):
         steps += 1
         newJointPositions = controller.getNextJointPositions()
         action = get_action(env, newJointPositions, 0)
-
         # action = controller.trajectory.getPosition(time.time())
+
         obs, reward, done, info = env.step(action)
+        
         desiredGoal = obs["desired_goal"]
-        # print(desiredGoal)
-        # print(distance(desiredGoal, currentGoal))
+        # desiredGoal = genRandomGoal(env.robot, seed)
+        # env.desiredGoal = desiredGoal
+
         if distance(desiredGoal, currentGoal) > 0.1:
             currentPosition = controller.getEndEffectorWorldPosition()
             trajectory = SimpleTrajectory(currentPosition, desiredGoal, time.time())

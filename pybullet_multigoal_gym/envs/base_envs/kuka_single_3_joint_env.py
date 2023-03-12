@@ -139,8 +139,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
         # generate the 3DoF goal within a 3D bounding box such that,
         #       it is at least 0.02m away from the gripper or the object
         while True:
-            self.desired_goal = self.np_random.uniform(self.robot.target_bound_lower,
-                                                       self.robot.target_bound_upper)
+            # TODO currently generating points that are potentially to close or too far from the robot arm to reach
+            self.desired_goal = self.np_random.uniform(self.robot.target_bound_lower, self.robot.target_bound_upper)
             if np.linalg.norm(self.desired_goal - center) > 0.1:
                 break
 
