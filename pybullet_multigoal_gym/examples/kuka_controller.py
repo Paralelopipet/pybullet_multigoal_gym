@@ -7,7 +7,7 @@ import time
 from seer.controller import ForceAngleController
 import numpy as np
 from seer.environment import GymEnvironment
-from seer.trajectory import TestTrajectory, SimpleTrajectory
+from seer.trajectory import TestTrajectory, SimpleTrajectory, SimpleTrajectory2
 import time 
 from typing import List
 from pybullet_multigoal_gym.utils.noise_generation import add_noise
@@ -60,17 +60,21 @@ def run(env, seed=11):
     # testTrajectory = SimpleTrajectory(controller.getEndEffectorWorldPosition(), controller.getEndEffectorWorldPosition(), time.time())
     controller.setTrajectory(testTrajectory)
     currentGoal = [0.,0.,0.,]
-    timeOfReset = time.time()
+    # timeOfReset = time.time()
+    timeOfReset = env.simulation_time()
     stepsSinceReset = 0
     successes = 1 
     fails = 1
     tipovers = 0
     steps = 0
+    maxEpisodeSteps = 120
+    position_std = env.noise_stds['pos']
+    centerOfMass_std = env.noise_stds['com']
     while True:
         stepsSinceReset += 1
         steps += 1
-        newJointPositions = controller.getNextJointPositions()
-        action = get_action(env, newJointPositions, 0)
+        newJointPositions = controller.getNextJointPositions(env.simulation_time())
+        action = get_action(env, newJointPositions, 0   )
         # action = controller.trajectory.getPosition(time.time())
 
         obs, reward, done, info = env.step(action)
@@ -81,9 +85,11 @@ def run(env, seed=11):
 
         if distance(desiredGoal, currentGoal) > 0.1:
             currentPosition = controller.getEndEffectorWorldPosition()
-            trajectory = SimpleTrajectory(currentPosition, desiredGoal, time.time())
+            trajectory = SimpleTrajectory2(currentPosition, desiredGoal, env.simulation_time())
             controller.setTrajectory(trajectory)
             currentGoal = desiredGoal
+
+        tipoverResponsesInitiated = controller.tipoverResponsesSinceLastCheck()
 
         goalAchieved = info["goal_achieved"]
 
@@ -91,25 +97,25 @@ def run(env, seed=11):
             successes += 1
             env.reset()
             if wandb.run:
-                wandb.log({"time_to_goal": time.time()-timeOfReset,
+                wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
                            "steps_to_goal": stepsSinceReset}, step=env.total_steps)
-            timeOfReset = time.time()
+            timeOfReset = env.simulation_time()
             stepsSinceReset = 0
-        elif time.time() - timeOfReset > 10:
+        # elif env.simulation_time() - timeOfReset > 5:
+        elif stepsSinceReset > maxEpisodeSteps:
             # if takes longer than 10s assume it cannot reach target
             fails += 1 
             if env.tipped_over():
                 tipovers += 1
             env.reset()
-            timeOfReset = time.time()
+            timeOfReset = env.simulation_time()
             stepsSinceReset = 0
         
         if wandb.run:
-            wandb.log({"success_rate" : successes/(successes + fails),
-                       "successes" : successes,
-                       "fails" : fails,
-                       'tipovers': tipovers,
-                       "steps" : steps}, step=env.total_steps)
+            wandb.log({"successful_episodes_rate" : successes/(successes + fails),
+                       "successful_episodes_count" : successes,
+                       "failed_episodes_count" : fails,
+                       "tipover_responses" : tipoverResponsesInitiated}, step=env.total_steps)
             
 
 if __name__ == "__main__":

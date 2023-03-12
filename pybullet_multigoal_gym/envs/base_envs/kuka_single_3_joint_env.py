@@ -329,6 +329,9 @@ class KukaBullet3Env(BaseBulletMGEnv):
         pos, orientation = self._p.getBasePositionAndOrientation(self.robot.robot_id)
         return self._p.getAxisAngleFromQuaternion(orientation)[-1] > self.tipping_threshold
     
+    def simulation_time(self):
+        return self.dt*self.total_steps
+    
     @property 
     def p(self):
         return self._p 
