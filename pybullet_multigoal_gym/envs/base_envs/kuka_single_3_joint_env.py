@@ -28,7 +28,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
                  gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,  joint_force_sensors=False,
                  target_in_the_air=True, end_effector_start_on_table=False,
-                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, tipping_threshold=0.5, force_angle_reward_factor=1.0, noise_stds = {}):
+                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, tipping_threshold=0.5,
+                 force_angle_reward_factor=1.0, noise_stds = {}, target_min_distance=0.1, target_min_distance_xy=0.1):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -50,6 +51,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.has_obj = has_obj
         self.obj_range = obj_range
         self.target_range = target_range
+        self.target_min_distance = target_min_distance
+        self.target_min_distance_xy = target_min_distance_xy
         self.plane_position = plane_position
         self.has_spring = has_spring
         self.joint_force_sensors =  joint_force_sensors
@@ -138,7 +141,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                                  self.object_initial_pos['block'][3:])
 
         # generate goals & images
-        self._generate_goal(current_obj_pos=object_xyz_1)
+        self._generate_goal(current_obj_pos=object_xyz_1, minimum_distance=self.target_min_distance, minimum_distance_xy=self.target_min_distance_xy)
         if self.goal_image:
             self._generate_goal_image(current_obj_pos=object_xyz_1)
         
@@ -155,7 +158,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         pos_work_integral = 0
         vel_work_integral = 0
 
-    def _generate_goal(self, current_obj_pos=None):
+    def _generate_goal(self, minimum_distance, minimum_distance_xy, current_obj_pos=None):
         if current_obj_pos is None:
             # generate a goal around the gripper if no object is involved
             center = self.robot.end_effector_tip_initial_position.copy()
@@ -165,9 +168,15 @@ class KukaBullet3Env(BaseBulletMGEnv):
         # generate the 3DoF goal within a 3D bounding box such that,
         #       it is at least 0.02m away from the gripper or the object
         while True:
-            # TODO currently generating points that are potentially to close or too far from the robot arm to reach
-            self.desired_goal = self.np_random.uniform(self.robot.target_bound_lower, self.robot.target_bound_upper)
-            if np.linalg.norm(self.desired_goal - center) > 0.1:
+            self.desired_goal = self.np_random.uniform(self.robot.target_bound_lower,
+                                                       self.robot.target_bound_upper)
+            # NOTE For testing goal distances, override the goal here
+            # self.desired_goal = np.array([-0.1179, -0.08029, 0.2271])
+            # self.desired_goal = np.array([-0.9768, 0.3392, 0.7156])
+            distance = np.linalg.norm(self.desired_goal - center)
+            xy_distance = np.sqrt(np.sum(self.desired_goal[:2] ** 2))
+            if distance > minimum_distance and xy_distance > minimum_distance_xy:
+                print("accepted goal distance:", distance, 'xy distance:', xy_distance, 'minimums', minimum_distance, minimum_distance_xy)
                 break
 
         if not self.target_in_the_air:

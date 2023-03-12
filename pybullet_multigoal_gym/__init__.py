@@ -8,7 +8,8 @@ def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, bi
              image_observation=False, depth_image=False, goal_image=False, point_cloud=False, state_noise=False,
              visualize_target=True,
              camera_setup=None, observation_cam_id=None, goal_cam_id=0, target_range=0.15, plane_position=[0.,0.,-1.], has_spring=False, joint_force_sensors=False,
-             use_curriculum=False, num_goals_to_generate=1e6, tip_penalty=-10.0, tipping_threshold=0.5, force_angle_reward_factor=15.0, noise_stds = {}):
+             use_curriculum=False, num_goals_to_generate=1e6, tip_penalty=-10.0, tipping_threshold=0.5, force_angle_reward_factor=15.0,
+             noise_stds = {}, target_min_distance= 0.1, target_min_distance_xy=0.1):
     if observation_cam_id is None:
         observation_cam_id = [0]
     tasks = ['push', 'reach', 'slide', 'pick_and_place',
@@ -114,7 +115,9 @@ def make_env(task='reach', gripper='parallel_jaw', num_block=5, render=False, bi
                     'plane_position': plane_position,
                     'has_spring' : has_spring,
                     'joint_force_sensors' :  joint_force_sensors,
-                    'noise_stds': noise_stds
+                    'noise_stds': noise_stds, 
+                    'target_min_distance': target_min_distance,
+                    'target_min_distance_xy': target_min_distance_xy,
                 },
                 max_episode_steps=max_episode_steps,
             )
