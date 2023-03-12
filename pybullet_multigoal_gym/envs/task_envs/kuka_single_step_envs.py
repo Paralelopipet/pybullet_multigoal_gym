@@ -51,7 +51,7 @@ class KukaTipOverEnv(KukaBullet3Env):
     def __init__(self, render=True, binary_reward=True, gravity_angle=0.0, joint_control=True, distance_threshold=0.05,
                  image_observation=False, goal_image=False, depth_image=False, visualize_target=True,
                  camera_setup=None, observation_cam_id=0, goal_cam_id=0, target_range=0.15, plane_position=[0., 0., -1.], has_spring=False,  joint_force_sensors=False,
-                 gripper_type='parallel_jaw', tip_penalty=-10, tipping_threshold=0.5, force_angle_reward_factor=15, noise_stds={}, target_min_distance=0.1, target_min_distance_xy=0.1):
+                 gripper_type='parallel_jaw', tip_penalty=-10, tipping_threshold=0.5, force_angle_reward_factor=15, noise_stds={}, target_min_distance=0.1, target_min_distance_xy=0.1,checkReachability=True):
         KukaBullet3Env.__init__(self, render=render, binary_reward=binary_reward, gravity_angle=gravity_angle, distance_threshold=distance_threshold,
                                 image_observation=image_observation, goal_image=goal_image, depth_image=depth_image,
                                 visualize_target=visualize_target,
@@ -61,7 +61,8 @@ class KukaTipOverEnv(KukaBullet3Env):
                                 plane_position=plane_position, has_spring=has_spring, joint_force_sensors=joint_force_sensors, target_in_the_air=True,
                                 grasping=False, joint_control=joint_control, has_obj=False,
                                 tip_penalty=tip_penalty, tipping_threshold=tipping_threshold, force_angle_reward_factor=force_angle_reward_factor,
-                                noise_stds=noise_stds, target_min_distance=target_min_distance, target_min_distance_xy=target_min_distance_xy)
+                                noise_stds=noise_stds, target_min_distance=target_min_distance, target_min_distance_xy=target_min_distance_xy,
+                                checkReachability=checkReachability)
 
 
 class KukaSlideEnv(KukaBulletMGEnv):

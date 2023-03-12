@@ -329,6 +329,18 @@ class KukaBox(MultiURDFBasedRobot):
             residualThreshold=0.00001)  # type: ignore
         return joint_poses[:7]
 
+    def is_point_reachable(self, target):
+        jointPoses = self.compute_ik2(target)
+        kuka_joint_pos, kuka_joint_vel,_,_ = self.get_kuka_joint_state()
+        self.set_kuka_joint_state(jointPoses)
+        result = self._p.getLinkState(self.kuka_body_index, self.end_effector_tip_joint_index, computeForwardKinematics=1,computeLinkVelocity=1)
+        actualPosition, link_rot, com_trn, com_rot, frame_pos, frame_rot, link_vt, link_vr = result
+        distance = np.linalg.norm(np.array(actualPosition)-target)
+        # print(distance)
+        self.set_kuka_joint_state(kuka_joint_pos, vel=kuka_joint_vel)
+        return distance < 0.05
+
+
     def move_arm(self, joint_poses):
         self._p.setJointMotorControlArray(bodyUniqueId=self.kuka_body_index,
                                           jointIndices=self.kuka_joint_index,

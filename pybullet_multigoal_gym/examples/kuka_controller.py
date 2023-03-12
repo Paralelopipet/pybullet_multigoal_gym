@@ -74,12 +74,14 @@ def run(env, seed=11):
         stepsSinceReset += 1
         steps += 1
         newJointPositions = controller.getNextJointPositions(env.simulation_time())
-        action = get_action(env, newJointPositions, 0   )
+        action = get_action(env, newJointPositions, 0)
         # action = controller.trajectory.getPosition(time.time())
 
         obs, reward, done, info = env.step(action)
         
         desiredGoal = obs["desired_goal"]
+        currentPosition = controller.getEndEffectorWorldPosition()
+        # print(distance(currentPosition, desiredGoal))
         # desiredGoal = genRandomGoal(env.robot, seed)
         # env.desiredGoal = desiredGoal
 
@@ -133,6 +135,17 @@ if __name__ == "__main__":
                    observation_cam_id=[0],
                    goal_cam_id=0,
                    target_range=0.3,
-                   plane_position=[0,0,-0.58],
+                   plane_position=[0,0,-0.58],  # without spring
+                    has_spring = False,
+                    joint_force_sensors=True,
+                    tip_penalty = -30.0,  # -20.0
+                    force_angle_reward_factor = 1.0,
+                    noise_stds = {
+                        'pos' :  0.0,
+                        'vel' :  0.0,
+                        'tor' :  0.0,
+                        'com' :  0.0,
+                    },
+                    checkReachability=True
                    )
     run(env, seed=11)

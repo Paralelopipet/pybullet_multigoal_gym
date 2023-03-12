@@ -17,7 +17,7 @@ class BaseBulletMGEnv(gym.Env):
 
     def __init__(self, robot: "KukaBox", chest=False,
                  render=False, image_observation=False, goal_image=False, camera_setup=None,
-                 seed=0, gravity=[0,0,-9.81], timestep=0.002, frame_skip=20):
+                 seed=0, gravity=[0,0,-9.81], timestep=0.002, frame_skip=1):
         self.robot = robot
 
         self.isRender = render

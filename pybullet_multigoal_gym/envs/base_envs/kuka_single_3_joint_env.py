@@ -29,7 +29,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                  gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,  joint_force_sensors=False,
                  target_in_the_air=True, end_effector_start_on_table=False,
                  distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, tipping_threshold=0.5,
-                 force_angle_reward_factor=1.0, noise_stds = {}, target_min_distance=0.1, target_min_distance_xy=0.1):
+                 force_angle_reward_factor=1.0, noise_stds = {}, target_min_distance=0.1, target_min_distance_xy=0.1, checkReachability=True):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -53,6 +53,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.target_range = target_range
         self.target_min_distance = target_min_distance
         self.target_min_distance_xy = target_min_distance_xy
+        self.checkReachability = checkReachability
         self.plane_position = plane_position
         self.has_spring = has_spring
         self.joint_force_sensors =  joint_force_sensors
@@ -176,8 +177,12 @@ class KukaBullet3Env(BaseBulletMGEnv):
             distance = np.linalg.norm(self.desired_goal - center)
             xy_distance = np.sqrt(np.sum(self.desired_goal[:2] ** 2))
             if distance > minimum_distance and xy_distance > minimum_distance_xy:
-                print("accepted goal distance:", distance, 'xy distance:', xy_distance, 'minimums', minimum_distance, minimum_distance_xy)
-                break
+                if self.checkReachability:
+                    if self.robot.is_point_reachable(self.desired_goal):
+                        break
+                else:
+                    print("accepted goal distance:", distance, 'xy distance:', xy_distance, 'minimums', minimum_distance, minimum_distance_xy)
+                    break
 
         if not self.target_in_the_air:
             self.desired_goal[2] = self.object_initial_pos['block'][2]
