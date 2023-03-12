@@ -65,11 +65,11 @@ def run(env, seed=11):
     stepsSinceReset = 0
     successes = 1 
     fails = 1
-    tipovers = 0
     steps = 0
-    maxEpisodeSteps = 120
+    maxEpisodeSteps = 100
     position_std = env.noise_stds['pos']
     centerOfMass_std = env.noise_stds['com']
+    goalReachedYet = False
     while True:
         stepsSinceReset += 1
         steps += 1
@@ -95,23 +95,47 @@ def run(env, seed=11):
 
         goalAchieved = info["goal_achieved"]
 
-        if goalAchieved:
-            successes += 1
-            env.reset()
-            if wandb.run:
-                wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
-                           "steps_to_goal": stepsSinceReset}, step=env.total_steps)
-            timeOfReset = env.simulation_time()
-            stepsSinceReset = 0
-        # elif env.simulation_time() - timeOfReset > 5:
-        elif stepsSinceReset > maxEpisodeSteps:
-            # if takes longer than 10s assume it cannot reach target
-            fails += 1 
-            if env.tipped_over():
-                tipovers += 1
-            env.reset()
-            timeOfReset = env.simulation_time()
-            stepsSinceReset = 0
+
+        # if goalAchieved:
+        #     successes += 1
+        #     env.reset()
+        #     if wandb.run:
+        #         wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
+        #                    "steps_to_goal": stepsSinceReset}, step=env.total_steps)
+        #     timeOfReset = env.simulation_time()
+        #     stepsSinceReset = 0
+        # # elif env.simulation_time() - timeOfReset > 5:
+        # elif stepsSinceReset > maxEpisodeSteps:
+        #     # if takes longer than 10s assume it cannot reach target
+        #     fails += 1 
+        #     if env.tipped_over():
+        #         tipovers += 1
+        #     env.reset()
+        #     timeOfReset = env.simulation_time()
+        #     stepsSinceReset = 0
+
+        if goalReachedYet:
+            if stepsSinceReset > maxEpisodeSteps:
+                successes += 1 
+                env.reset()
+                timeOfReset = env.simulation_time()
+                stepsSinceReset =0 
+                goalReachedYet = False
+            else:
+                pass 
+        else:
+            if goalAchieved:
+                goalReachedYet = True 
+                if wandb.run:
+                    wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
+                            "steps_to_goal": stepsSinceReset}, step=env.total_steps)
+            elif stepsSinceReset > maxEpisodeSteps:
+                fails += 1
+                env.reset()
+                timeOfReset = env.simulation_time()
+                stepsSinceReset = 0
+                goalReachedYet = False
+
         
         if wandb.run:
             wandb.log({"successful_episodes_rate" : successes/(successes + fails),
