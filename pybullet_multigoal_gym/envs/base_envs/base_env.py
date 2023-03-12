@@ -127,6 +127,7 @@ class BaseBulletMGEnv(gym.Env):
         return [seed]
 
     def reset(self, test=False):
+        self._log_before_reset()
         self.robot.reset()
         self._task_reset(test=test)
         obs = self._get_obs()
@@ -140,7 +141,7 @@ class BaseBulletMGEnv(gym.Env):
         info = {
             'goal_achieved': goal_achieved
         }
-        return obs, reward, False, info
+        return obs, reward, goal_achieved, info
 
     def render(self, mode="human", camera_id=0):
         assert mode in ['human', 'pcd', 'rgb_array', 'depth', 'rgbd_array'], "make sure you use a supported rendering mode"
@@ -257,6 +258,10 @@ class BaseBulletMGEnv(gym.Env):
             nearVal=0.1, farVal=100.0)
         self.camera_matrices[-1] = {'view_matrix': view_matrix,
                                     'proj_matrix': proj_matrix}
+
+    def _log_before_reset(self):
+        # method to log the state before the reset happens in each episode
+        raise NotImplementedError
 
     def _task_reset(self, test=False):
         # method to override, purposed to task specific reset

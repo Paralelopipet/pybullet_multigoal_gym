@@ -92,7 +92,7 @@ def run(env, seed=11):
             env.reset()
             if wandb.run:
                 wandb.log({"time_to_goal": time.time()-timeOfReset,
-                           "steps_to_goal": stepsSinceReset})
+                           "steps_to_goal": stepsSinceReset}, step=env.total_steps)
             timeOfReset = time.time()
             stepsSinceReset = 0
         elif time.time() - timeOfReset > 10:
@@ -109,7 +109,7 @@ def run(env, seed=11):
                        "successes" : successes,
                        "fails" : fails,
                        'tipovers': tipovers,
-                       "steps" : steps})
+                       "steps" : steps}, step=env.total_steps)
             
 
 if __name__ == "__main__":

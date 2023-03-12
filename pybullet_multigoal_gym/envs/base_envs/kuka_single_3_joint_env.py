@@ -28,7 +28,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
                  camera_setup=None, observation_cam_id=None, goal_cam_id=0,
                  gripper_type='parallel_jaw', obj_range=0.15, target_range=0.15, plane_position = [0.,0.,-1.], has_spring=False,  joint_force_sensors=False,
                  target_in_the_air=True, end_effector_start_on_table=False,
-                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, force_angle_reward_factor=1.0, noise_stds = {}):
+                 distance_threshold=0.05, joint_control=True, grasping=False, has_obj=False, tip_penalty=-100.0, tipping_threshold=0.5, force_angle_reward_factor=1.0, noise_stds = {}):
         if observation_cam_id is None:
             observation_cam_id = [0]
         self.binary_reward = binary_reward
@@ -65,6 +65,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         }
 
         self.tip_penalty = tip_penalty
+        self.tipping_threshold = tipping_threshold
         self.force_angle_reward_factor = force_angle_reward_factor
 
         self.noise_stds = noise_stds# has 'pos', 'vel', 'tor' and 'com'
@@ -72,8 +73,13 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.desired_goal = None
         self.desired_goal_image = None
 
-        self.cycle_time = 0
+        self.episode_steps = 0
         self.total_steps = 0
+
+        # define parameters for work
+        self.vel_work_integral = 0 
+        self.pos_work_integral = 0 
+        self.last_joint_poses = None
 
         robot = KukaBox (grasping=grasping,
                      joint_control=joint_control,
@@ -88,6 +94,21 @@ class KukaBullet3Env(BaseBulletMGEnv):
                                  image_observation=image_observation, goal_image=goal_image,
                                  camera_setup=camera_setup,
                                  seed=0, timestep=0.002, frame_skip=20)
+
+    def _log_before_reset(self):
+        is_tipped = self.tipped_over() # calculate if angle from z axis is higher than threshold
+        if self.desired_goal is None:
+            self.desired_goal = [0,0,0]
+        if wandb.run:
+            wandb.log({
+                'tipped_over': float(is_tipped),
+                'desired_goal_x' : self.desired_goal[0],
+                'desired_goal_y' : self.desired_goal[1],
+                'desired_goal_z' : self.desired_goal[2],
+                'positional work' : self.pos_work_integral,
+                'velocity work' : self.vel_work_integral
+        }, step=self.total_steps)
+
 
     def _task_reset(self, test=False):
         if not self.objects_urdf_loaded:
@@ -127,7 +148,12 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self._p.addUserDebugLine([0,0,0], 10*self.gravity_vec,[0,1,0], lifeTime=5)
 
         # reset time
-        self.cycle_time = 0
+        self.episode_steps = 0
+
+        # reset work integrals
+        self.last_joint_poses = None
+        pos_work_integral = 0
+        vel_work_integral = 0
 
     def _generate_goal(self, current_obj_pos=None):
         if current_obj_pos is None:
@@ -184,6 +210,18 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         centre_of_mass = self.get_centre_of_mass()
 
+        # calculate the work done! BOI
+        if self.last_joint_poses is None:
+            self.last_joint_poses = np.array(joint_poses)
+
+        # positional work done
+        pos_work = np.add(np.array(joint_poses), -self.last_joint_poses) * joint_torques
+        vel_work = self.dt * np.multiply((np.array(joint_velocities)), joint_torques)
+
+        self.pos_work_integral += pos_work
+        self.vel_work_integral += vel_work
+
+
         [joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass] = add_noise_to_observations(joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass, self.noise_stds)
 
         if self.joint_control:
@@ -191,18 +229,22 @@ class KukaBullet3Env(BaseBulletMGEnv):
             policy_state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, policy_state))
 
         # count time
-        self.cycle_time += 1
+        self.episode_steps += 1
         self.total_steps += 1
 
         # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), gravity(3), time(1)
         # TODO Investigate gravity observations - robot training brakes
         # state = np.concatenate((state, np.array([self.cycle_time, self.gravity_phi, self.gravity_theta])))
-        state = np.concatenate((state, [self.cycle_time]))
+        state = np.concatenate((state, [self.episode_steps]))
         if wandb.run:
             wandb.log({
                 'force_angle': self.force_angle(centre_of_mass),
-                'observations_complete': state,
-                'cycle_time': self.cycle_time
+                # 'complete_observations_dict': state,
+                'episode_steps': self.episode_steps,
+                'max_joint_vel' : max(joint_velocities),
+                'joint_velocities' : joint_velocities,
+                'joint_torques' : joint_torques,
+                'simulation_time' : self.dt*self.total_steps # real world time that has passed within the simulation
         }, step=self.total_steps)
 
         obs_dict = {'observation': state.copy(),
@@ -285,7 +327,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
     def tipped_over(self):
         pos, orientation = self._p.getBasePositionAndOrientation(self.robot.robot_id)
-        return self._p.getAxisAngleFromQuaternion(orientation)[-1] > 0.5
+        return self._p.getAxisAngleFromQuaternion(orientation)[-1] > self.tipping_threshold
     
     @property 
     def p(self):
