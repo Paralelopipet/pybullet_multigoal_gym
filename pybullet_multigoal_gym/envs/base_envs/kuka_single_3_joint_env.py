@@ -110,7 +110,9 @@ class KukaBullet3Env(BaseBulletMGEnv):
                 'desired_goal_y' : self.desired_goal[1],
                 'desired_goal_z' : self.desired_goal[2],
                 'positional work' : self.pos_work_integral,
-                'velocity work' : self.vel_work_integral
+                'velocity work' : self.vel_work_integral,
+                'total work per episode - vel': np.sum(self.pos_work_integral),
+                'total work per episode - pos': np.sum(self.vel_work_integral)
         }, step=self.total_steps)
 
 
@@ -156,8 +158,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         # reset work integrals
         self.last_joint_poses = None
-        pos_work_integral = 0
-        vel_work_integral = 0
+        self.pos_work_integral = 0
+        self.vel_work_integral = 0
 
     def _generate_goal(self, minimum_distance, minimum_distance_xy, current_obj_pos=None):
         if current_obj_pos is None:
@@ -232,8 +234,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
         pos_work = np.add(np.array(joint_poses), -self.last_joint_poses) * joint_torques
         vel_work = self.dt * np.multiply((np.array(joint_velocities)), joint_torques)
 
-        self.pos_work_integral += pos_work
-        self.vel_work_integral += vel_work
+        self.pos_work_integral += np.clip(pos_work, 0.,np.inf)
+        self.vel_work_integral += np.clip(vel_work, 0.,np.inf)
 
 
         [joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass] = add_noise_to_observations(joint_poses, joint_velocities, joint_forces, joint_torques, centre_of_mass, self.noise_stds)
