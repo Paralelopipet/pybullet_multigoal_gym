@@ -151,7 +151,6 @@ class KukaBullet3Env(BaseBulletMGEnv):
         #reset gravity
         self.gravity_vec, self.gravity_phi, self.gravity_theta = gravity_vector(self.gravity_angle)
         self._p.setGravity(self.gravity_vec[0], self.gravity_vec[1], self.gravity_vec[2])
-        self._p.addUserDebugLine([0,0,0], 10*self.gravity_vec,[0,1,0], lifeTime=5)
 
         # reset time
         self.episode_steps = 0
@@ -207,22 +206,9 @@ class KukaBullet3Env(BaseBulletMGEnv):
         # robot state contains gripper xyz coordinates, orientation (and finger width)
         gripper_xyz, gripper_rpy, gripper_finger_closeness, gripper_vel_xyz, gripper_vel_rpy, gripper_finger_vel, joint_poses, joint_velocities, joint_forces, joint_torques = self.robot.calc_robot_state()
         assert self.desired_goal is not None
-        policy_state = state = gripper_xyz
+        state = gripper_xyz
         achieved_goal = gripper_xyz.copy()
-        if self.has_obj:
-            block_xyz, _ = self._p.getBasePositionAndOrientation(self.object_bodies['block'])
-            block_rel_xyz = gripper_xyz - np.array(block_xyz)
-            block_vel_xyz, block_vel_rpy = self._p.getBaseVelocity(self.object_bodies['block'])
-            block_rel_vel_xyz = gripper_vel_xyz - np.array(block_vel_xyz)
-            block_rel_vel_rpy = gripper_vel_rpy - np.array(block_vel_rpy)
-            achieved_goal = np.array(block_xyz).copy()
-            # the HER paper use different state observations for the policy and critic network
-            # critic further takes the velocities as input
-            state = np.concatenate((gripper_xyz, block_xyz, gripper_finger_closeness, block_rel_xyz,
-                                    gripper_vel_xyz, gripper_finger_vel, block_rel_vel_xyz, block_rel_vel_rpy))
-            policy_state = np.concatenate((gripper_xyz, gripper_finger_closeness, block_rel_xyz))
-        else:
-            assert not self.grasping, "grasping should not be true when there is no objects"
+        assert not self.grasping, "grasping should not be true when there is no objects"
 
         centre_of_mass = self.get_centre_of_mass()
 
@@ -242,20 +228,17 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         if self.joint_control:
             state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, state))
-            policy_state = np.concatenate((joint_poses, gripper_xyz, centre_of_mass, joint_velocities, joint_forces, joint_torques, policy_state))
 
         # count time
         self.episode_steps += 1
         self.total_steps += 1
-
-        # Final state: joints (7), gripper_xyz (3), COM (3) joint_velocities(7), joint_forces(7x6=42), joint_torques(7), gravity(3), time(1)
-        # TODO Investigate gravity observations - robot training brakes
-        # state = np.concatenate((state, np.array([self.cycle_time, self.gravity_phi, self.gravity_theta])))
+        
+        GRAVITY_FACTOR = np.pi * 200
+        state = np.concatenate((state, [self.gravity_phi / GRAVITY_FACTOR, self.gravity_theta / GRAVITY_FACTOR]))
         state = np.concatenate((state, [self.episode_steps]))
         if wandb.run:
             wandb.log({
                 'force_angle': self.force_angle(centre_of_mass),
-                # 'complete_observations_dict': state,
                 'episode_steps': self.episode_steps,
                 'max_joint_vel' : max(joint_velocities),
                 'joint_velocities' : joint_velocities,
@@ -264,24 +247,11 @@ class KukaBullet3Env(BaseBulletMGEnv):
         }, step=self.total_steps)
 
         obs_dict = {'observation': state.copy(),
-                    'policy_state': policy_state.copy(),
+                    "policy_state": state.copy(),
                     'achieved_goal': achieved_goal.copy(),
                     'desired_goal': self.desired_goal.copy(),
                     # 'desired_joint_goal': self.desired_joint_goal.copy(),
                     }
-        if self.image_observation:
-            images = []
-            for cam_id in self.observation_cam_id:
-                images.append(self.render(mode=self.render_mode, camera_id=cam_id))
-            obs_dict['observation'] = images[0].copy()
-            obs_dict['images'] = images
-            obs_dict.update({'state': state.copy()})
-            if self.goal_image:
-                achieved_goal_img = self.render(mode=self.render_mode, camera_id=self.goal_cam_id)
-                obs_dict.update({
-                    'achieved_goal_img': achieved_goal_img.copy(),
-                    'desired_goal_img': self.desired_goal_image.copy(),
-                })
         return obs_dict
 
     def _compute_reward(self, achieved_goal, desired_goal, observation):
