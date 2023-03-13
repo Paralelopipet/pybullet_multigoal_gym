@@ -1,5 +1,4 @@
 import os
-import open3d as o3d
 import numpy as np
 import pybullet_multigoal_gym as pmg
 import matplotlib.pyplot as plt
