@@ -79,6 +79,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
         self.episode_steps = 0
         self.total_steps = 0
+        self.tip_over_count = 0
 
         # define parameters for work
         self.vel_work_integral = 0 
@@ -101,11 +102,13 @@ class KukaBullet3Env(BaseBulletMGEnv):
 
     def _log_before_reset(self):
         is_tipped = self.tipped_over() # calculate if angle from z axis is higher than threshold
+        self.tip_over_count += float(is_tipped)
         if self.desired_goal is None:
             self.desired_goal = [0,0,0]
         if wandb.run:
             wandb.log({
                 'tipped_over': float(is_tipped),
+                'tip_over_count': self.tip_over_count,
                 'desired_goal_x' : self.desired_goal[0],
                 'desired_goal_y' : self.desired_goal[1],
                 'desired_goal_z' : self.desired_goal[2],
