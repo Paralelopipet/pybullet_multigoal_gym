@@ -111,8 +111,8 @@ class KukaBullet3Env(BaseBulletMGEnv):
                 'desired_goal_z' : self.desired_goal[2],
                 'positional work' : self.pos_work_integral,
                 'velocity work' : self.vel_work_integral,
-                'total work per episode - vel': np.sum(self.pos_work_integral),
-                'total work per episode - pos': np.sum(self.vel_work_integral)
+                'total work per episode - vel': np.sum(self.vel_work_integral),
+                'total work per episode - pos': np.sum(self.pos_work_integral)
         }, step=self.total_steps)
 
 
