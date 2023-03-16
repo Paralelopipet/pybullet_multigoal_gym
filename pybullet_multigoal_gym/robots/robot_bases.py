@@ -138,8 +138,6 @@ class MultiURDFBasedRobot(XmlBasedRobot):
             'target_purple': [-0.54, 0.0, 0.035, 0.0, 0.0, 0.0, 1.0]
         }
 
-        if has_spring:
-            self.plane_position[2] += -0.24
 
     def reset(self):
         # load urdf if it's the first time that reset() gets called
