@@ -4,3 +4,6 @@
 build
 *.egg
 *.egg*
+
+# MacOS
+.DS_Store

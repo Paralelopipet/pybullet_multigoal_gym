@@ -1,12 +1,4 @@
-#### Warning (2022.05.06): 
-```diff
-@@ I will stop further development on this repo as Mujoco is now free. @@
-@@ However I will keep maintaining the repo and respond to issues. @@
-@@ Feel free to keep using the package and contact me whenever necessary. @@
-@@ Thanks for you interests! @@
-```
-
-### Pybullet-implementation of the multi-goal robotics environment originally from Open AI Gym.
+### Pybullet-implementation of multi-goal robotics environments
 
 This version uses a kuka iiwa14 7DoF arm, equipped with a robotiq85 two finger gripper or a simple parallel jaw.
 
@@ -15,10 +7,9 @@ However, it may look funny when the robot picks up a block with the robotiq85 gr
 since it's under-actuated and thus makes it hard to fine-tune the simulation. 
 You can use the parallel jaw gripper, which is effectively the same as the OpenAI one.
 
-I have implemented some goal-conditioned RL algos in my another repo, using the 
+There are some goal-conditioned RL algos in the another repo, using the 
 original Gym environment. There are DDPG-HER, SAC-HER, and others.
-<a href="https://github.com/IanYangChina/DRL_Implementation.git" target="_blank">DRL_Implementation.</a>
-Expired mujoco license got me here. I will also retrain those agents and pose performance ASAP.
+<a href="https://github.com/DSep/pybullet_multigoal_implementation.git" target="_blank">DRL_Implementation.</a>
 
 This package also provides some harder tasks for long-horizon sparse reward robotic arm manipulation tasks
 on this package as well. All the environments have been summarised in a paper.
@@ -26,31 +17,21 @@ The newest release is the most recommended. There are still on-going updates for
 the version published on Taros 2021 and [ArXiv](https://arxiv.org/abs/2105.05985).
 Due to further development, the description in this paper may not be exactly the same with the master branch.
 
-The following tasks are supported in the v1.3 branch:
-1. Reach, push, pick-and-place, slide as the gym-robotics tasks;
-2. Four Multi-step tasks described in the [Taros paper](https://arxiv.org/abs/2105.05985)
-3. Two shape-assemble tasks (block-fitting & reaching) with pushing primitive actions (continuous & discrete)
-4. An insertion task with 6 DoF gripper frame control
+The following tasks are supported:
+1. Multiple unstable reaching tasks with a Kuka on various surfaces, never attached to the ground;
+2. Reach, push, pick-and-place, slide as the gym-robotics tasks;
+3. Four Multi-step tasks described in the [Taros paper](https://arxiv.org/abs/2105.05985)
+4. Two shape-assemble tasks (block-fitting & reaching) with pushing primitive actions (continuous & discrete)
+5. An insertion task with 6 DoF gripper frame control
 
-```
-@InProceedings{yang2021pmg,
-author="Yang, Xintong and Ji, Ze and Wu, Jing and Lai, Yu-Kun",
-title="An Open-Source Multi-goal Reinforcement Learning Environment for Robotic Manipulation with Pybullet",
-booktitle="Towards Autonomous Robotic Systems",
-year="2021",
-publisher="Springer International Publishing",
-pages="14--24",
-isbn="978-3-030-89177-0"
-}
-```
 
 ### Installation
-
+Best usage is done via the parent repo: https://github.com/Paralelopipet/SEER. If you want to just try this code, you can, using:
 ```
-git clone https://github.com/IanYangChina/pybullet_multigoal_gym.git
+git clone git@github.com/Paralelopipet/pybullet_multigoal_gym.git
 cd pybullet_multigoal_gym
 pip install -r requirements.txt
-pip install .
+pip install -e .
 ```
 
 ### Some info
@@ -69,7 +50,7 @@ See examples below.
 
 ### Try it out
 
-See the [examples folder](https://github.com/IanYangChina/pybullet_multigoal_gym/tree/master/pybullet_multigoal_gym/examples)
+See the [examples folder](https://github.com/Paralelopipet/pybullet_multigoal_gym/tree/master/pybullet_multigoal_gym/examples)
 for more scripts to play with.
 
 ```python
@@ -138,27 +119,16 @@ while True:
 
 <img src="/src/AssembleTasks.png" width="800"/>
 
-### Update log
 
-2020.12.26 --- Add hierarchical environments for a pick and place task, with image observation and goal supported. 
-See the above example.
-
-2020.12.28 --- Add image observation to non-hierarchical environments.
-
-2021.01.14 --- Add parallel jaw gripper.
-
-2021.03.08 --- Add a make_env(...) method to replace the pre-registration codes.
-
-2021.03.09 --- Add multi-block stacking and re-arranging tasks
-
-2021.03.12 --- Add multi-block tasks with a chest
-
-2021.03.17 --- Joint space control support
-
-2021.03.18 --- Finish curriculum; add on-hand camera observation
-
-2021.11.11 --- Finish task decomposition, subgoal generation codes and some compatibility issues, new release
-
-2021.12.03 --- Add shape assembly task with push primitive support (discrete & continuous)
-
-2022.05.06 --- Clean up stuff; add insertion task; remove hierarchical env codes.
+Acknowledgement: The base of this fork has the following citation:
+```
+@InProceedings{yang2021pmg,
+author="Yang, Xintong and Ji, Ze and Wu, Jing and Lai, Yu-Kun",
+title="An Open-Source Multi-goal Reinforcement Learning Environment for Robotic Manipulation with Pybullet",
+booktitle="Towards Autonomous Robotic Systems",
+year="2021",
+publisher="Springer International Publishing",
+pages="14--24",
+isbn="978-3-030-89177-0"
+}
+```

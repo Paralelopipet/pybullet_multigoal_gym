@@ -9,10 +9,10 @@ for p in packages:
 
 setup(name='pybullet-multigoal-gym',
       version='1.0.0',
-      description='A migration of the OpenAI Gym multi-goal robotic environment based on pybullet',
+      description='A migration of the OpenAI Gym multi-goal robotic environment based on pybullet. Based on XintongYang\'s implementation.',
       url='#',
-      author='XintongYang',
-      author_email='YangX66@cardiff.ac.uk',
+      author='ddd26, mbg34, nyl25, sd974 and XintongYang',
+      author_email='author@cam.ac.uk',
       packages=packages,
       package_dir={'pybullet_multigoal_gym': 'pybullet_multigoal_gym'},
       package_data={'pybullet_multigoal_gym': [
