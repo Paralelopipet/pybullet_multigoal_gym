@@ -170,10 +170,6 @@ class KukaBox(MultiURDFBasedRobot):
 
         # move position to the initial configuration
         self._p.resetBasePositionAndOrientation(self.robot_id, [-0.1, 0, 0.00], pybullet.getQuaternionFromEuler([0.0, 0.0, 0])) 
-        if self.has_spring:
-            box_position = self.plane_position
-            # box_position[2] -= 0.05
-            self._p.resetBasePositionAndOrientation(self.box,  box_position, [0, 0, 0, 1]) 
 
         # reset arm poses
         self.set_kuka_joint_state(self.kuka_rest_pose)

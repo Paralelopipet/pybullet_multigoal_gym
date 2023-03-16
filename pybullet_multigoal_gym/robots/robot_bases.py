@@ -144,8 +144,23 @@ class MultiURDFBasedRobot(XmlBasedRobot):
         if not self.robot_urdf_loaded:
                         # load box as base
             plane_id = self._p.loadURDF(self.plane_urdf, useFixedBase=self.fixed_base, globalScaling=1.0, basePosition=self.plane_position)
+            self.addToScene(plane_id)
             self.robot_urdf_loaded = True
             
+
+            if self.has_spring:
+                # add constraints
+                rest_length =1.27
+                sphere_urdf = str(ASSETS_DIR / "objects" / "assembling_shape" / "sphere.urdf")
+                sphere = self._p.loadURDF(sphere_urdf, useFixedBase=True, globalScaling=0.5, basePosition=np.array(self.plane_position) - np.array([0, 0, 0.45]))
+                self.addToScene(sphere)
+                self.box = sphere
+            # for target_name in self.target_keys:
+            #     self.target_bodies[target_name] = self._p.loadURDF(
+            #         os.path.join(os.path.dirname(__file__), "..", "assets", "robots", target_name + ".urdf"),
+            #         basePosition=self.target_initial_pos[target_name][:3],
+            #         baseOrientation=self.target_initial_pos[target_name][3:])
+            # reset robot-specific configuration
             self.robot_id = self._p.loadURDF(self.model_urdf,
                                              basePosition=self.base_position,
                                              baseOrientation=self.base_orientation,
@@ -156,27 +171,12 @@ class MultiURDFBasedRobot(XmlBasedRobot):
             jointPositions = [3.559609, 0.411182, 0.862129, 1.744441, 0.077299, -1.129685, 0.006001]
             for jointIndex in range(len(jointPositions)):
                 self._p.resetJointState(ob, jointIndex, jointPositions[jointIndex])
-            self.addToScene(plane_id)
             self.addToScene(self.robot_id)
 
             if self.has_spring:
-                # add constraints
-                rest_length =1.27
-                box_urdf = str(ASSETS_DIR / "objects" / "assembling_shape" / "sphere.urdf")
-                box_position = self.plane_position 
-                box_position[2] += -0.45
-                box = self._p.loadURDF(box_urdf, useFixedBase=True, globalScaling=0.5, basePosition=box_position)
-                self.addToScene(box)
-                self.box = box
-                c_spring = self._p.createConstraint(box, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, rest_length], [0, 0, 0], [0, 0, 0], [0,0,0,1], [0,0,0,1])
+                c_spring = self._p.createConstraint(sphere, -1, self.robot_id, 1, self._p.JOINT_FIXED, [0, 0, rest_length], [0, 0, 0], [0, 0, 0], [0,0,0,1], [0,0,0,1])
                 self._p.changeConstraint(c_spring, maxForce=MAX_SPRING_FORCE)
                 self._p.addUserDebugLine([0,0,0.1], [0,0,-0.1], [1, 0, 0], 1, 100)
-            # for target_name in self.target_keys:
-            #     self.target_bodies[target_name] = self._p.loadURDF(
-            #         os.path.join(os.path.dirname(__file__), "..", "assets", "robots", target_name + ".urdf"),
-            #         basePosition=self.target_initial_pos[target_name][:3],
-            #         baseOrientation=self.target_initial_pos[target_name][3:])
-        # reset robot-specific configuration
             
             # Enable joint force sensors
             if self.joint_force_sensors:
