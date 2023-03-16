@@ -74,74 +74,59 @@ def run(env, *, seed: int, num_epochs: int, num_cycles: int, num_episodes: int):
         for cycle in range(num_cycles):
             print("Epoch", epoch, "Cycle", cycle)
             for episode in range(num_episodes):
-                stepsSinceReset += 1
-                steps += 1
-                newJointPositions = controller.getNextJointPositions(env.simulation_time())
-                action = get_action(env, newJointPositions, 0)
-                # action = controller.trajectory.getPosition(time.time())
+                episodeFinished = False
+                while not episodeFinished:
+                    stepsSinceReset += 1
+                    steps += 1
+                    newJointPositions = controller.getNextJointPositions(env.simulation_time())
+                    action = get_action(env, newJointPositions, 0)
+                    # action = controller.trajectory.getPosition(time.time())
 
-                obs, reward, done, info = env.step(action)
-                
-                desiredGoal = obs["desired_goal"]
-                currentPosition = controller.getEndEffectorWorldPosition()
-                # print(distance(currentPosition, desiredGoal))
-                # desiredGoal = genRandomGoal(env.robot, seed)
-                # env.desiredGoal = desiredGoal
-
-                if distance(desiredGoal, currentGoal) > 0.1:
+                    obs, reward, done, info = env.step(action)
+                    
+                    desiredGoal = obs["desired_goal"]
                     currentPosition = controller.getEndEffectorWorldPosition()
-                    trajectory = SimpleTrajectory2(currentPosition, desiredGoal, env.simulation_time())
-                    controller.setTrajectory(trajectory)
-                    currentGoal = desiredGoal
+                    # print(distance(currentPosition, desiredGoal))
+                    # desiredGoal = genRandomGoal(env.robot, seed)
+                    # env.desiredGoal = desiredGoal
 
-                tipoverResponsesInitiated = controller.tipoverResponsesSinceLastCheck()
+                    if distance(desiredGoal, currentGoal) > 0.1:
+                        currentPosition = controller.getEndEffectorWorldPosition()
+                        trajectory = SimpleTrajectory2(currentPosition, desiredGoal, env.simulation_time())
+                        controller.setTrajectory(trajectory)
+                        currentGoal = desiredGoal
 
-                goalAchieved = info["goal_achieved"]
+                    tipoverResponsesInitiated = controller.tipoverResponsesSinceLastCheck()
 
+                    goalAchieved = info["goal_achieved"]
 
-                # if goalAchieved:
-                #     successes += 1
-                #     env.reset()
-                #     if wandb.run:
-                #         wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
-                #                    "steps_to_goal": stepsSinceReset}, step=env.total_steps)
-                #     timeOfReset = env.simulation_time()
-                #     stepsSinceReset = 0
-                # # elif env.simulation_time() - timeOfReset > 5:
-                # elif stepsSinceReset > maxEpisodeSteps:
-                #     # if takes longer than 10s assume it cannot reach target
-                #     fails += 1 
-                #     if env.tipped_over():
-                #         tipovers += 1
-                #     env.reset()
-                #     timeOfReset = env.simulation_time()
-                #     stepsSinceReset = 0
-
-                if goalReachedYet:
-                    if stepsSinceReset > maxEpisodeSteps:
-                        successes += 1 
-                        env.reset()
-                        timeOfReset = env.simulation_time()
-                        stepsSinceReset =0 
-                        goalReachedYet = False
+                    if goalReachedYet:
+                        if stepsSinceReset > maxEpisodeSteps:
+                            successes += 1 
+                            env.reset()
+                            timeOfReset = env.simulation_time()
+                            stepsSinceReset =0 
+                            goalReachedYet = False
+                            episodeFinished = True
+                        else:
+                            pass 
                     else:
-                        pass 
-                else:
-                    if goalAchieved:
-                        goalReachedYet = True 
-                        if wandb.run:
-                            wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
-                                    "steps_to_goal": stepsSinceReset}, step=env.total_steps)
-                    elif stepsSinceReset > maxEpisodeSteps:
-                        fails += 1
-                        env.reset()
-                        timeOfReset = env.simulation_time()
-                        stepsSinceReset = 0
-                        goalReachedYet = False
+                        if goalAchieved:
+                            goalReachedYet = True 
+                            if wandb.run:
+                                wandb.log({"time_to_goal": env.simulation_time()-timeOfReset,
+                                        "steps_to_goal": stepsSinceReset}, step=env.total_steps)
+                        elif stepsSinceReset > maxEpisodeSteps:
+                            fails += 1
+                            env.reset()
+                            timeOfReset = env.simulation_time()
+                            stepsSinceReset = 0
+                            goalReachedYet = False
+                            episodeFinished = True
 
-                
-                if wandb.run:
-                    wandb.log({"successful_episodes_rate" : successes/(successes + fails),
-                            "successful_episodes_count" : successes,
-                            "failed_episodes_count" : fails,
-                            "tipover_responses" : tipoverResponsesInitiated}, step=env.total_steps)
+                    
+                    if wandb.run:
+                        wandb.log({"successful_episodes_rate" : successes/(successes + fails),
+                                "successful_episodes_count" : successes,
+                                "failed_episodes_count" : fails,
+                                "tipover_responses" : tipoverResponsesInitiated}, step=env.total_steps)
