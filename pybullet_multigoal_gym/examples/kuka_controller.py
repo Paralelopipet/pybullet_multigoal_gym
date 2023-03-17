@@ -49,7 +49,7 @@ def genRandomGoal(robot, seed=11):
         if np.linalg.norm(desired_goal - center) > 0.1:
             return desired_goal
 
-def run(env, *, seed: int, num_epochs: int, num_cycles: int, num_episodes: int):
+def run(env, *, seed: int, num_epochs: int, num_cycles: int, num_episodes: int, action_noise_std):
     obs = env.reset()
     done = False
     env.seed(seed)
@@ -58,10 +58,11 @@ def run(env, *, seed: int, num_epochs: int, num_cycles: int, num_episodes: int):
     testTrajectory = TestTrajectory(None, None)
     # testTrajectory = SimpleTrajectory(controller.getEndEffectorWorldPosition(), [0,0,1.5], time.time())
     # testTrajectory = SimpleTrajectory(controller.getEndEffectorWorldPosition(), controller.getEndEffectorWorldPosition(), time.time())
+    #
     controller.setTrajectory(testTrajectory)
     currentGoal = [0.,0.,0.,]
     # timeOfReset = time.time()
-    timeOfReset = env.simulation_time()
+    timeOfReset = env.simulation_time() + 5
     stepsSinceReset = 0
     successes = 1 
     fails = 1
@@ -81,7 +82,11 @@ def run(env, *, seed: int, num_epochs: int, num_cycles: int, num_episodes: int):
                     newJointPositions = controller.getNextJointPositions(env.simulation_time())
                     action = get_action(env, newJointPositions, 0)
                     # action = controller.trajectory.getPosition(time.time())
-
+                    # add noise to action
+                    if action_noise_std>0.0:
+                        action = add_noise(action, action_noise_std)
+                        action = np.clip(action, -1.0, 1.0)
+                        
                     obs, reward, done, info = env.step(action)
                     
                     desiredGoal = obs["desired_goal"]

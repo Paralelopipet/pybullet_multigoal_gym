@@ -81,7 +81,7 @@ class KukaBullet3Env(BaseBulletMGEnv):
         self.total_steps = 0
         self.tip_over_count = 0
 
-        # define parameters for work
+        # define param eters for work
         self.vel_work_integral = 0 
         self.pos_work_integral = 0 
         self.last_joint_poses = None
